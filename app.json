@@ -14,7 +14,12 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -30,6 +35,8 @@
     },
     "plugins": [
       "expo-router",
+      "expo-dev-client",
+      "@maplibre/maplibre-react-native",
       [
         "expo-location",
         {
@@ -39,12 +46,20 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#001C43",
+          "image": "./assets/splash/splash-background.png",
+          "resizeMode": "cover"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -53,9 +68,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "4f574177-4340-4ec4-bc89-07a0a8d48541"
+        "projectId": "a1784284-6bc1-4153-bc60-fcc177840d0a"
       }
     },
-    "owner": "inouerakans-team"
+    "owner": "lippbytes-team"
   }
 }

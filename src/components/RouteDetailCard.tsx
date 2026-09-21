@@ -3,6 +3,7 @@ import { RouteItem } from "@/type";
 import { Ionicons } from "@expo/vector-icons";
 import { View } from "react-native";
 import Text from "./Text";
+import { legModeStyle } from "./transit/legModes";
 
 interface Props {
   item: RouteItem;
@@ -10,23 +11,6 @@ interface Props {
 }
 
 export default function RouteDetailCard({ item, originName }: Props) {
-  const getModeLabel = (mode: string) => {
-    switch (mode.toLowerCase()) {
-      case "walk":
-        return "Jalan kaki";
-      case "krl":
-        return "Naik KRL";
-      case "mrt":
-        return "Naik MRT";
-      case "transjakarta":
-        return "Naik TransJakarta";
-      case "jaklingko":
-        return "Naik JakLingko";
-      default:
-        return `Naik ${mode}`;
-    }
-  };
-
   return (
     <View className="bg-dark-2 border border-light-3/10 rounded-xl overflow-hidden">
       <View className="p-4 gap-0">
@@ -55,7 +39,16 @@ export default function RouteDetailCard({ item, originName }: Props) {
                 </Text>
 
                 <View className="flex-row items-center gap-2 mt-1 mb-1">
-                  <View className="bg-dark-4 px-2 py-0.5 rounded border border-light-3/10">
+                  {/* Warna moda hanya di ikon (penanda non-teks); teks badge
+                      tetap abu terang di latar gelap supaya kontras AA
+                      tidak bergantung pada warna moda (oranye JakLingko
+                      dengan teks putih tidak lolos AA). */}
+                  <View className="bg-dark-4 px-2 py-0.5 rounded border border-light-3/10 flex-row items-center gap-1">
+                    <Ionicons
+                      name={legModeStyle(leg.mode).icon}
+                      size={12}
+                      color={legModeStyle(leg.mode).color}
+                    />
                     <Text className="text-light-2 text-xs font-semibold uppercase">
                       {leg.mode}
                     </Text>

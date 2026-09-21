@@ -1,45 +1,62 @@
-// src/app/navigate.tsx (VERSI NORMAL - PRODUKSI)
+// src/app/navigate.tsx (VERSI MULTIPLATFORM - MOBILE & WEB)
+import ArrivalCelebration from "@/components/navigate/ArrivalCelebration";
+import NavigateMap, { NavigateMapHandle } from "@/components/navigate/NavigateMap";
 import StepCard from "@/components/navigate/StepCard";
+import { legModeStyle } from "@/components/transit/legModes";
 import Text from "@/components/Text";
-import { RouteItem } from "@/type"; // Pastikan pakai type terbaru
+import { RouteItem } from "@/type";
+import { geocodePlace, reverseGeocode } from "@/utils/geocode";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  Camera,
-  CameraRef,
-  GeoJSONSource,
-  Layer,
-  Map,
-  UserLocation,
-  ViewAnnotation,
-} from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import {
+  ActivityIndicator,
+  LayoutChangeEvent,
+  Pressable,
+  View,
+} from "react-native";
 
 type Coordinate = { latitude: number; longitude: number };
 
-const MAP_STYLE_URL =
-  "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
-
 // --- API Helpers ---
-async function geocodePlace(query: string): Promise<Coordinate | null> {
-  try {
-    // Gunakan Indonesia saja agar fleksibel (Bandung/Jakarta/dll)
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ", Indonesia")}&format=json&limit=1`;
-    const res = await fetch(url, {
-      headers: { "User-Agent": "SmartRouteApp/1.0" },
-    });
-    const json = await res.json();
-    if (json[0]?.lat && json[0]?.lon)
-      return {
-        latitude: parseFloat(json[0].lat),
-        longitude: parseFloat(json[0].lon),
-      };
-    return null;
-  } catch (err) {
-    return null;
-  }
+
+// Backend mengirim ujung leg jalan kaki sebagai STRING KOORDINAT mentah
+// (mis. "-6.24487, 106.80093"), bukan nama tempat — lihat RouteLeg.from/to
+// di skema backend. Sebelumnya string itu ikut dilempar ke pencarian teks
+// Nominatim, yang SELALU mengembalikan [] (Nominatim mencari nama tempat,
+// bukan mem-parse koordinat). Akibatnya titik asal & tujuan tidak pernah
+// berhasil di-resolve, dan rute yang cuma jalan kaki (kedua ujungnya
+// koordinat) gagal total -> "Gagal memuat rute". Koordinatnya sudah ada di
+// depan mata, jadi cukup di-parse langsung — nol panggilan jaringan.
+function parseCoordinateString(value: string): Coordinate | null {
+  const match = value
+    .trim()
+    .match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+  if (!match) return null;
+  const latitude = parseFloat(match[1]);
+  const longitude = parseFloat(match[2]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (latitude < -90 || latitude > 90) return null;
+  if (longitude < -180 || longitude > 180) return null;
+  return { latitude, longitude };
+}
+
+// Task App-14: geocoding nama tempat sekarang SEPENUHNYA lewat
+// utils/geocode.ts (geocodePlace, diimpor di atas) — bukan implementasi
+// lokal lagi. File ini dulu punya geocodePlace duplikat sendiri (query
+// tanpa konteks kota) yang resolve "Kali Besar" ke Kalimantan Selatan,
+// bukan Jakarta — satu sumber kebenaran sekarang berarti bug sekelas itu
+// cuma perlu diperbaiki sekali, bukan di tiap salinan.
+//
+// Koordinat dulu (gratis & instan, tidak menyentuh jaringan sama sekali),
+// baru geocode kalau memang nama tempat. Tidak perlu jeda manual lagi di
+// sini — geocodePlace() sudah throttle sendiri secara global (lihat
+// utils/geocode.ts), jeda manual di sini dulu cuma bikin throttle ganda.
+async function resolvePoint(name: string): Promise<Coordinate | null> {
+  const parsed = parseCoordinateString(name);
+  if (parsed) return parsed;
+  return geocodePlace(name);
 }
 
 async function fetchSegmentPolyline(
@@ -49,7 +66,7 @@ async function fetchSegmentPolyline(
 ): Promise<[number, number][] | null> {
   try {
     const m = mode.toLowerCase();
-    if (["mrt", "krl", "train"].includes(m))
+    if (legModeStyle(mode).isRail)
       return [
         [start.longitude, start.latitude],
         [end.longitude, end.latitude],
@@ -91,6 +108,30 @@ function findClosestPointIndex(
   return closestIndex;
 }
 
+// Task App-13: jarak lurus sesungguhnya dalam meter (haversine) — beda dari
+// findClosestPointIndex di atas, yang cuma butuh perbandingan RELATIF antar
+// titik polyline (Pythagoras lat/lng mentah cukup untuk itu). Deteksi "tiba"
+// butuh angka ABSOLUT dalam meter untuk dibandingkan ke radius, jadi tidak
+// bisa reuse fungsi itu apa adanya.
+function haversineDistanceMeters(a: Coordinate, b: Coordinate): number {
+  const EARTH_RADIUS_M = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.latitude)) *
+      Math.cos(toRad(b.latitude)) *
+      Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
+}
+
+// Di tengah rentang 50-100m yang diminta task — cukup longgar untuk akurasi
+// GPS HP biasa (bisa meleset puluhan meter, apalagi di area urban/dekat
+// bangunan tinggi), tapi tidak selonggar itu jadi "tiba" padahal masih
+// beberapa blok jauhnya.
+const ARRIVAL_RADIUS_METERS = 75;
+
 export default function NavigateScreen() {
   const { data, origin } = useLocalSearchParams<{
     data: string;
@@ -114,11 +155,27 @@ export default function NavigateScreen() {
 
   const [isFollowingUser, setIsFollowingUser] = useState(true);
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
+  // Task App-13: nama tujuan yang enak dibaca untuk layar selamat. Nama dari
+  // routeData sering berupa string koordinat mentah (backend mengisi
+  // origin/destination.name dengan koordinat) — jelek kalau ditampilkan di
+  // layar penutup, jadi di-reverse-geocode dulu.
+  const [destinationLabel, setDestinationLabel] = useState<string | null>(null);
+  // Task App-17: tinggi StepCard diukur dinamis (isinya berubah-ubah
+  // tergantung tab Navigasi/Info Crowd & jumlah langkah rute) supaya tombol
+  // GPS lock bisa ditaruh TEPAT di atasnya, bukan angka tebakan yang bisa
+  // salah begitu card-nya lebih tinggi/pendek dari perkiraan — pola sama
+  // yang sudah dipakai & terbukti di all-stops-map.tsx (Task App-15 lanjutan).
+  const [stepCardHeight, setStepCardHeight] = useState(0);
 
-  const cameraRef = useRef<CameraRef>(null);
+  const mapRef = useRef<NavigateMapHandle>(null);
   const locationSubscription = useRef<Location.LocationSubscription | null>(
     null,
   );
+  // Task App-13: ref (bukan state) — sengaja tidak boleh memicu render
+  // ulang sendiri, cuma penanda "sudah pernah otomatis ke-trigger" supaya
+  // effect di bawah tidak berulang kali memanggil setIsFinished selama user
+  // diam di dalam radius (AC: notifikasi tiba cuma sekali per sesi).
+  const hasAutoArrivedRef = useRef(false);
 
   // --- 1. SETUP LOCATION (REAL GPS) ---
   useEffect(() => {
@@ -166,13 +223,17 @@ export default function NavigateScreen() {
           pointsToGeocode.push(routeData.legs[0].from);
         routeData.legs.forEach((leg) => pointsToGeocode.push(leg.to));
 
-        const coords: Coordinate[] = [];
+        // Sejajar 1:1 dengan pointsToGeocode — titik yang gagal disimpan
+        // sebagai null, BUKAN dibuang. Sebelumnya hasil gagal langsung tidak
+        // di-push, sehingga index-nya bergeser: coords[i] tidak lagi berarti
+        // "titik awal leg ke-i", dan segmen berikutnya digambar antar titik
+        // yang salah pasangan.
+        const resolved: (Coordinate | null)[] = [];
         for (const name of pointsToGeocode) {
-          const coord = await geocodePlace(name);
-          if (coord) coords.push(coord);
-          await new Promise((r) => setTimeout(r, 1100));
+          resolved.push(await resolvePoint(name));
         }
 
+        const coords = resolved.filter((c): c is Coordinate => c !== null);
         if (coords.length < 2) {
           setHasError(true);
           return;
@@ -182,8 +243,8 @@ export default function NavigateScreen() {
         const allCoords: [number, number][] = [];
         for (let i = 0; i < routeData.legs.length; i++) {
           const leg = routeData.legs[i];
-          const startCoord = coords[i];
-          const endCoord = coords[i + 1];
+          const startCoord = resolved[i];
+          const endCoord = resolved[i + 1];
           if (startCoord && endCoord) {
             const segment = await fetchSegmentPolyline(
               startCoord,
@@ -211,7 +272,7 @@ export default function NavigateScreen() {
     if (!userLocation || fullRouteCoords.length === 0 || isFinished) return;
 
     const closestIndex = findClosestPointIndex(userLocation, fullRouteCoords);
-    const startIndex = Math.max(0, closestIndex - 2); // Sisakan sedikit di belakang
+    const startIndex = Math.max(0, closestIndex - 2);
     const trimmedCoords = fullRouteCoords.slice(startIndex);
 
     if (
@@ -222,36 +283,61 @@ export default function NavigateScreen() {
     }
   }, [userLocation, fullRouteCoords, isFinished]);
 
-  // --- 4. CAMERA LOGIC ---
+  // --- 4. DETEKSI TIBA DI TUJUAN (Task App-13) ---
+  // Reuse tampilan "Sampai Tujuan!" yang sudah ada di StepCard (dipicu lewat
+  // isFinished, sebelumnya cuma bisa manual — tap "Selesai" atau menuntaskan
+  // semua step) — bukan modal terpisah baru. Konsisten: user yang sampai
+  // beneran (GPS) dan user yang menandai selesai sendiri lihat layar yang
+  // sama persis, tidak ada dua UI "selesai" yang berbeda.
   useEffect(() => {
-    if (!cameraRef.current) return;
-    if (isFollowingUser && userLocation) {
-      cameraRef.current.flyTo({
-        center: [userLocation.longitude, userLocation.latitude],
-        zoom: 16,
-        duration: 1000,
-      });
-      return;
+    if (!userLocation || isFinished || hasAutoArrivedRef.current) return;
+    if (coordinates.length === 0) return;
+
+    const destination = coordinates[coordinates.length - 1];
+    const distance = haversineDistanceMeters(userLocation, destination);
+
+    if (distance <= ARRIVAL_RADIUS_METERS) {
+      hasAutoArrivedRef.current = true;
+      setIsFollowingUser(false);
+      setIsFinished(true);
     }
-    if (coordinates.length > 0) {
-      const targetIndex = isFinished
-        ? coordinates.length - 1
-        : currentStepIndex;
-      const targetCoord = coordinates[targetIndex];
-      if (targetCoord)
-        cameraRef.current.flyTo({
-          center: [targetCoord.longitude, targetCoord.latitude],
-          zoom: 15,
-          duration: 800,
-        });
-    }
-  }, [
-    currentStepIndex,
-    coordinates,
-    isFinished,
-    isFollowingUser,
-    userLocation,
-  ]);
+  }, [userLocation, coordinates, isFinished]);
+
+  // --- 5. NAMA TUJUAN UNTUK LAYAR SELAMAT (Task App-13) ---
+  useEffect(() => {
+    if (coordinates.length === 0) return;
+
+    let cancelled = false;
+    const resolveLabel = async () => {
+      // Nama dari routeData dipakai kalau memang nama tempat sungguhan;
+      // kalau isinya string koordinat, baru reverse-geocode.
+      const rawName = routeData.legs[routeData.legs.length - 1]?.to ?? "";
+      if (rawName && !parseCoordinateString(rawName)) {
+        setDestinationLabel(rawName);
+        return;
+      }
+
+      const destination = coordinates[coordinates.length - 1];
+      const label = await reverseGeocode(destination);
+      if (!cancelled && label) setDestinationLabel(label);
+    };
+    resolveLabel();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [coordinates, routeData]);
+
+  // Tombol "Kembali ke Beranda" harus benar-benar ke Beranda. Sebelumnya
+  // memakai router.back(), yang cuma mundur SATU layar — dari /navigate itu
+  // mendarat di layar detail rute, bukan Beranda (dilaporkan langsung dari
+  // testing HP). dismissAll() membuang layar navigasi dari stack root dulu
+  // supaya tombol back HP tidak masuk lagi ke navigasi yang sudah selesai,
+  // lalu navigate("/") pindah ke tab Beranda.
+  const handleGoHome = () => {
+    if (router.canDismiss()) router.dismissAll();
+    router.navigate("/");
+  };
 
   const handleNext = () => {
     setIsFollowingUser(false);
@@ -298,76 +384,43 @@ export default function NavigateScreen() {
 
   return (
     <View className="flex-1 bg-[#18181B]">
-      <Map style={{ flex: 1 }} mapStyle={MAP_STYLE_URL}>
-        <UserLocation />
-        <Camera
-          ref={cameraRef}
-          initialViewState={{
-            center: userLocation
-              ? [userLocation.longitude, userLocation.latitude]
-              : [coordinates[0].longitude, coordinates[0].latitude],
-            zoom: 15,
-          }}
-        />
+      <NavigateMap
+        ref={mapRef}
+        coordinates={coordinates}
+        routeGeometry={routeGeometry}
+        currentStepIndex={currentStepIndex}
+        isFinished={isFinished}
+        userLocation={userLocation}
+        isFollowingUser={isFollowingUser}
+      />
 
-        {routeGeometry && (
-          <GeoJSONSource
-            id="routeSource"
-            data={{ type: "Feature", geometry: routeGeometry, properties: {} }}
-          >
-            <Layer
-              type="line"
-              id="routeLine"
-              style={{
-                lineColor: "#00875A",
-                lineWidth: 5,
-                lineCap: "round",
-                lineJoin: "round",
-              }}
-            />
-          </GeoJSONSource>
-        )}
-
-        {coordinates.map((coord, index) => {
-          const isActive = isFinished
-            ? index === coordinates.length - 1
-            : index === currentStepIndex;
-          const isOrigin = index === 0;
-          return (
-            <ViewAnnotation
-              key={`marker-${index}`}
-              id={`marker-${index}`}
-              lngLat={[coord.longitude, coord.latitude]}
-            >
-              <View
-                className="rounded-full items-center justify-center border-white"
-                style={{
-                  width: isActive ? 24 : 16,
-                  height: isActive ? 24 : 16,
-                  backgroundColor: isOrigin
-                    ? "#EF4444"
-                    : isActive
-                      ? "#00875A"
-                      : "#6B7280",
-                  borderWidth: isActive ? 2 : 1,
-                  opacity: isActive || isOrigin ? 1 : 0.7,
-                }}
-              />
-            </ViewAnnotation>
-          );
-        })}
-      </Map>
-
-      <View className="absolute top-14 left-5 right-5 flex-row justify-between items-start z-10">
-        {!isFinished && (
+      {/* Task App-17: cuma tombol back yang tetap di atas sekarang — tombol
+          GPS lock pindah ke kanan-bawah (lihat View terpisah di bawah),
+          supaya tidak lagi menghalangi pandangan ke peta di area atas. */}
+      {!isFinished && (
+        <View className="absolute top-14 left-5 z-10">
           <Pressable
             onPress={() => router.back()}
             className="bg-dark-2 p-3 rounded-full shadow-md"
           >
             <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
           </Pressable>
-        )}
-        {!isFinished && (
+        </View>
+      )}
+
+      {/* Task App-17: direposisi dari atas ke kanan-bawah — mudah dijangkau
+          jempol saat HP dipegang satu tangan, dan tidak lagi menutupi
+          pandangan ke peta di area atas (posisi lama). `bottom` dihitung
+          dari tinggi StepCard yang diukur dinamis (stepCardHeight) supaya
+          selalu duduk tepat 16px di atas card-nya, persis berapa pun
+          tingginya (info tab lebih tinggi dari tab navigasi biasa) — tidak
+          pernah tabrakan dengan card ATAUPUN dengan ikon atribusi MapLibre
+          (pojok kanan-bawah peta, jauh di bawah posisi ini). */}
+      {!isFinished && (
+        <View
+          className="absolute right-5 z-10"
+          style={{ bottom: 32 + stepCardHeight + 16 }}
+        >
           <Pressable
             onPress={() => setIsFollowingUser(!isFollowingUser)}
             className={`p-3 rounded-full shadow-lg border ${isFollowingUser ? "bg-primary-emerald border-primary-emerald" : "bg-dark-2 border-light-3/20"}`}
@@ -378,9 +431,13 @@ export default function NavigateScreen() {
               color={isFollowingUser ? "#FFFFFF" : "#A1A1AA"}
             />
           </Pressable>
-        )}
-      </View>
+        </View>
+      )}
 
+      {/* Task App-13: begitu selesai, StepCard diganti layar selamat penuh —
+          bukan ditumpuk, supaya tidak ada dua UI "selesai" bersamaan.
+          (Branch isFinished di StepCard jadi tidak terpakai lagi dari sini.) */}
+      {!isFinished && (
       <StepCard
         currentLeg={currentLeg}
         totalSteps={totalSteps}
@@ -395,8 +452,20 @@ export default function NavigateScreen() {
           setIsFollowingUser(false);
           setIsFinished(true);
         }}
-        onBack={() => router.back()}
+        onBack={handleGoHome}
+        onLayout={(e: LayoutChangeEvent) =>
+          setStepCardHeight(e.nativeEvent.layout.height)
+        }
       />
+      )}
+
+      {isFinished && (
+        <ArrivalCelebration
+          routeData={routeData}
+          destinationLabel={destinationLabel}
+          onGoHome={handleGoHome}
+        />
+      )}
     </View>
   );
 }

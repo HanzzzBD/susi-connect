@@ -8,6 +8,7 @@
 import { ApiResponse, CrowdInfo, Leg, RouteItem } from "@/type";
 import { fetchWithTimeout, RequestTimeoutError } from "@/utils/withTimeout";
 import { API_BASE_URL } from "./apiConfig";
+import { LEG_MODES, legModeFromBackend } from "@/components/transit/legModes";
 
 // Latensi POST /routes terukur 2–19 detik (OTP2 menghitung beberapa kandidat
 // sekaligus). 30 detik dipilih di ATAS maksimum terukur itu: tujuannya
@@ -22,8 +23,11 @@ const ROUTES_TIMEOUT_MS = 30_000;
 // be updated to match.
 
 export interface BackendRouteLeg {
-  mode: "WALK" | "BUS" | "RAIL";
+  mode: "WALK" | "BUS" | "RAIL" | "SUBWAY" | "TRAM";
   route_name?: string;
+  // Leg BUS saja: kategori resmi route_desc TransJakarta ("BRT",
+  // "Mikrotrans", ...) — pembeda BRT/feeder/JakLingko.
+  route_category?: string;
   from: string;
   to: string;
 }
@@ -77,6 +81,8 @@ export async function fetchRealRoutes(
   origin: Coordinate,
   destination: Coordinate,
   departureTime?: string,
+  // Filter moda transit (lihat MODE_FILTERS di legModes.ts); undefined = semua.
+  modes?: string[],
 ): Promise<RouteRecommendation> {
   let res: Response;
   try {
@@ -87,6 +93,7 @@ export async function fetchRealRoutes(
         origin,
         destination,
         ...(departureTime ? { departure_time: departureTime } : {}),
+        ...(modes?.length ? { modes } : {}),
       }),
       timeoutMs: ROUTES_TIMEOUT_MS,
       timeoutMessage:
@@ -157,14 +164,11 @@ export async function fetchRealRoutes(
 //   belum pernah dapat laporan kepadatan (lihat crowdDensity.ts di backend)
 //   — itu tetap ditampilkan graceful, bukan bug.
 
-function mapLegMode(mode: BackendRouteLeg["mode"]): Leg["mode"] {
-  // Graph OTP2 memuat dua feed GTFS: TransJakarta (mode "BUS") dan KRL
-  // Commuter (mode "RAIL"). MRT/LRT belum ada di graph — datanya masih
-  // statis di backend (mrtLrtStations.ts), belum bisa dirutekan, jadi
-  // sengaja tidak ada pemetaannya di sini.
-  if (mode === "WALK") return "Walk";
-  if (mode === "RAIL") return "KRL";
-  return "TransJakarta";
+// Label tampilan diputuskan di legModes.ts, bukan di sini. Dulu fungsi ini
+// punya switch sendiri yang menjatuhkan semua mode tak dikenal ke
+// "TransJakarta" — begitulah leg MRT (SUBWAY) tampil sebagai bus.
+function mapLegMode(leg: BackendRouteLeg): Leg["mode"] {
+  return LEG_MODES[legModeFromBackend(leg.mode, leg.route_category)].label;
 }
 
 function mapCrowdLevel(
@@ -183,7 +187,7 @@ export function adaptToLegacyShape(rec: RouteRecommendation): ApiResponse {
     route_id: candidate.route_id,
     rank: index + 1, // backend sudah mengurutkan dari yang paling relevan
     legs: candidate.legs.map<Leg>((leg) => ({
-      mode: mapLegMode(leg.mode),
+      mode: mapLegMode(leg),
       service: leg.route_name,
       from: leg.from,
       to: leg.to,

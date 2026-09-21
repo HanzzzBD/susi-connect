@@ -2,8 +2,9 @@
 import Text from "@/components/Text";
 import { RouteItem } from "@/type";
 import { Ionicons } from "@expo/vector-icons";
+import { legModeStyle } from "@/components/transit/legModes";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { LayoutChangeEvent, Pressable, View } from "react-native";
 import ProgressBar from "./ProgressBar";
 
 type LegType = RouteItem["legs"][number];
@@ -20,6 +21,13 @@ interface StepCardProps {
   onPrev: () => void;
   onFinish: () => void;
   onBack: () => void; // <-- Prop baru untuk tombol kembali
+  /**
+   * Task App-17: dipakai navigate.tsx mengukur tinggi card ini (isinya
+   * berubah-ubah tergantung tab aktif & jumlah langkah) supaya tombol GPS
+   * lock bisa diposisikan tepat di atasnya — bukan angka tebakan, karena
+   * card ini TIDAK punya tinggi tetap.
+   */
+  onLayout?: (event: LayoutChangeEvent) => void;
 }
 
 export default function StepCard({
@@ -34,19 +42,15 @@ export default function StepCard({
   onPrev,
   onFinish,
   onBack, // <-- Destructure prop baru
+  onLayout,
 }: StepCardProps) {
   const [activeTab, setActiveTab] = useState<"navigation" | "info">(
     "navigation",
   );
 
   const getStepIcon = (mode: string) => {
-    const m = mode.toLowerCase();
-    if (m === "walk") return <Ionicons name="walk" size={24} color="#00875A" />;
-    if (m === "transjakarta" || m === "jaklingko")
-      return <Ionicons name="bus" size={24} color="#3B82F6" />;
-    if (m === "mrt" || m === "krl")
-      return <Ionicons name="train" size={24} color="#EAB308" />;
-    return <Ionicons name="navigate-outline" size={24} color="#FFFFFF" />;
+    const style = legModeStyle(mode);
+    return <Ionicons name={style.icon} size={24} color={style.color} />;
   };
 
   const getCrowdColor = (level: string) => {
@@ -76,7 +80,10 @@ export default function StepCard({
   };
 
   return (
-    <View className="absolute bottom-8 left-5 right-5 bg-dark-2 p-5 rounded-2xl gap-4 shadow-2xl border border-light-3/10">
+    <View
+      onLayout={onLayout}
+      className="absolute bottom-8 left-5 right-5 bg-dark-2 p-5 rounded-2xl gap-4 shadow-2xl border border-light-3/10"
+    >
       {/* Progress Bar tetap muncul di atas sebagai indikator 100% */}
       <ProgressBar percentage={progressPercentage} isFinished={isFinished} />
 
@@ -94,6 +101,12 @@ export default function StepCard({
             <Text className="text-light-3 text-sm text-center px-4">
               Anda telah tiba di{" "}
               {routeData.legs[routeData.legs.length - 1]?.to ?? "Tujuan"}
+            </Text>
+            {/* Task App-13: baris ucapan terima kasih — pesan tiba di atas
+                sudah ada sejak sebelumnya, ini pelengkap sesuai contoh pesan
+                di task ("...Terima kasih telah menggunakan SmartRoute AI."). */}
+            <Text className="text-light-3 text-sm text-center px-4">
+              Terima kasih telah menggunakan SmartRoute AI.
             </Text>
           </View>
 
@@ -151,57 +164,80 @@ export default function StepCard({
 
           {activeTab === "info" ? (
             // --- TAB INFO CROWD ---
+            // crowd/reliability bisa undefined kalau backend belum ada
+            // laporan kepadatan untuk halte rute ini (lihat TEMPORARY SHIM
+            // di src/services/routeService.ts). Backend juga cuma punya
+            // satu level kualitatif, tidak ada angka okupansi — jangan
+            // tebak, tampilkan apa adanya.
             <View className="py-2 gap-4">
-              <View className="flex-row items-center justify-between">
-                <Text className="text-light-2 text-sm font-semibold">
-                  Status Keramaian
-                </Text>
-                <View
-                  className={`px-2 py-1 rounded ${getCrowdBg(routeData.crowd.current_level)}`}
-                >
-                  <Text
-                    className={`text-xs font-bold ${getCrowdColor(routeData.crowd.current_level)}`}
-                  >
-                    {routeData.crowd.current_level}
-                  </Text>
-                </View>
-              </View>
+              {routeData.crowd ? (
+                <>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-light-2 text-sm font-semibold">
+                      Status Keramaian
+                    </Text>
+                    <View
+                      className={`px-2 py-1 rounded ${getCrowdBg(routeData.crowd.current_level)}`}
+                    >
+                      <Text
+                        className={`text-xs font-bold ${getCrowdColor(routeData.crowd.current_level)}`}
+                      >
+                        {routeData.crowd.current_level}
+                      </Text>
+                    </View>
+                  </View>
 
-              <View className="gap-2">
-                <View className="flex-row justify-between text-xs">
-                  <Text className="text-light-3">Okupansi Prediksi</Text>
-                  <Text className="text-light-1 font-bold">
-                    {routeData.crowd.predicted_occupancy}%
-                  </Text>
-                </View>
-                <View className="h-2 bg-dark-4 rounded-full overflow-hidden">
-                  <View
-                    className={`h-full rounded-full ${
-                      routeData.crowd.predicted_occupancy > 80
-                        ? "bg-red-500"
-                        : routeData.crowd.predicted_occupancy > 50
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                    }`}
-                    style={{ width: `${routeData.crowd.predicted_occupancy}%` }}
-                  />
-                </View>
-              </View>
+                  {routeData.crowd.predicted_occupancy != null ? (
+                    <View className="gap-2">
+                      <View className="flex-row justify-between text-xs">
+                        <Text className="text-light-3">Okupansi Prediksi</Text>
+                        <Text className="text-light-1 font-bold">
+                          {routeData.crowd.predicted_occupancy}%
+                        </Text>
+                      </View>
+                      <View className="h-2 bg-dark-4 rounded-full overflow-hidden">
+                        <View
+                          className={`h-full rounded-full ${
+                            routeData.crowd.predicted_occupancy > 80
+                              ? "bg-red-500"
+                              : routeData.crowd.predicted_occupancy > 50
+                                ? "bg-yellow-500"
+                                : "bg-green-500"
+                          }`}
+                          style={{
+                            width: `${routeData.crowd.predicted_occupancy}%`,
+                          }}
+                        />
+                      </View>
+                    </View>
+                  ) : (
+                    <Text className="text-light-3 text-xs">
+                      Angka okupansi belum tersedia.
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <Text className="text-light-3 text-xs">
+                  Data keramaian belum tersedia.
+                </Text>
+              )}
 
               <View className="bg-dark-4/50 p-3 rounded-lg border border-light-3/5 gap-2">
-                <View className="flex-row items-center gap-2">
-                  <Ionicons
-                    name="analytics-outline"
-                    size={16}
-                    color="#A1A1AA"
-                  />
-                  <Text className="text-light-2 text-xs">
-                    Prediksi berikutnya:{" "}
-                    <Text className="text-light-1 font-bold">
-                      {routeData.crowd.predicted_level}
+                {routeData.crowd && (
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons
+                      name="analytics-outline"
+                      size={16}
+                      color="#A1A1AA"
+                    />
+                    <Text className="text-light-2 text-xs">
+                      Prediksi berikutnya:{" "}
+                      <Text className="text-light-1 font-bold">
+                        {routeData.crowd.predicted_level}
+                      </Text>
                     </Text>
-                  </Text>
-                </View>
+                  </View>
+                )}
                 <View className="flex-row items-center gap-2">
                   <Ionicons
                     name="shield-checkmark-outline"
@@ -211,7 +247,9 @@ export default function StepCard({
                   <Text className="text-light-2 text-xs">
                     Reliabilitas:{" "}
                     <Text className="text-light-1 font-bold">
-                      {Math.round(routeData.reliability.score * 100)}%
+                      {routeData.reliability
+                        ? `${Math.round(routeData.reliability.score * 100)}%`
+                        : "Data belum tersedia"}
                     </Text>
                   </Text>
                 </View>

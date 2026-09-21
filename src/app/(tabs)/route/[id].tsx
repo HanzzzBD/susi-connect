@@ -3,6 +3,8 @@ import InfoCard from "@/components/InfoCard";
 import RouteDetailCard from "@/components/RouteDetailCard";
 import Text from "@/components/Text";
 import { RouteItem } from "@/type";
+import { formatRupiah } from "@/utils/currency";
+import { formatDepartureLabel } from "@/utils/departureTime";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
@@ -14,9 +16,23 @@ export default function RouteDetailScreen() {
   const routeData: RouteItem = JSON.parse(data);
   const router = useRouter();
 
-  // Konversi skor 0-1 ke tampilan
-  const comfortPercent = Math.round(routeData.comfort_score * 100);
-  const reliabilityPercent = Math.round(routeData.reliability.score * 100);
+  // comfort_score, reliability, dan crowd bisa undefined — backend belum
+  // mengisinya (Task Backend-04/05) atau field itu memang tidak ada di
+  // skema backend sama sekali. Tangani graceful, jangan tebak angkanya.
+  // Lihat TEMPORARY SHIM di src/services/routeService.ts.
+  const comfortPercent =
+    routeData.comfort_score != null
+      ? Math.round(routeData.comfort_score * 100)
+      : null;
+  const reliabilityPercent =
+    routeData.reliability != null
+      ? Math.round(routeData.reliability.score * 100)
+      : null;
+  // Task App-20: waktu berangkat yang BENAR-BENAR dipakai backend untuk
+  // hitung jadwal rute ini (lihat catatan RouteItem.departure_time).
+  const departureLabel = routeData.departure_time
+    ? formatDepartureLabel(routeData.departure_time)
+    : null;
 
   return (
     <View className="flex-1 bg-[#18181B]">
@@ -24,15 +40,23 @@ export default function RouteDetailScreen() {
         {/* Header Info */}
         <View className="gap-1">
           <View className="flex-row items-center gap-2">
-            <View
-              className={`px-2 py-0.5 rounded ${routeData.crowd.current_level === "HIGH" ? "bg-red-500/20" : routeData.crowd.current_level === "MEDIUM" ? "bg-yellow-500/20" : "bg-green-500/20"}`}
-            >
-              <Text
-                className={`text-xs font-bold ${routeData.crowd.current_level === "HIGH" ? "text-red-400" : routeData.crowd.current_level === "MEDIUM" ? "text-yellow-400" : "text-green-400"}`}
+            {routeData.crowd ? (
+              <View
+                className={`px-2 py-0.5 rounded ${routeData.crowd.current_level === "HIGH" ? "bg-red-500/20" : routeData.crowd.current_level === "MEDIUM" ? "bg-yellow-500/20" : "bg-green-500/20"}`}
               >
-                {routeData.crowd.current_level} CROWD
-              </Text>
-            </View>
+                <Text
+                  className={`text-xs font-bold ${routeData.crowd.current_level === "HIGH" ? "text-red-400" : routeData.crowd.current_level === "MEDIUM" ? "text-yellow-400" : "text-green-400"}`}
+                >
+                  {routeData.crowd.current_level} CROWD
+                </Text>
+              </View>
+            ) : (
+              <View className="px-2 py-0.5 rounded bg-light-3/10">
+                <Text className="text-xs font-bold text-light-3">
+                  Data crowd belum tersedia
+                </Text>
+              </View>
+            )}
             <Text className="text-light-3 text-xs">
               ID: {routeData.route_id}
             </Text>
@@ -57,15 +81,17 @@ export default function RouteDetailScreen() {
             <View className="flex-row justify-between">
               <Text className="text-light-2 text-sm">Tingkat Kenyamanan</Text>
               <Text className="text-light-1 text-sm font-bold">
-                {comfortPercent}%
+                {comfortPercent != null ? `${comfortPercent}%` : "Data belum tersedia"}
               </Text>
             </View>
-            <View className="h-1.5 bg-dark-4 rounded-full overflow-hidden">
-              <View
-                className="h-full bg-blue-500 rounded-full"
-                style={{ width: `${comfortPercent}%` }}
-              />
-            </View>
+            {comfortPercent != null && (
+              <View className="h-1.5 bg-dark-4 rounded-full overflow-hidden">
+                <View
+                  className="h-full bg-blue-500 rounded-full"
+                  style={{ width: `${comfortPercent}%` }}
+                />
+              </View>
+            )}
           </View>
 
           <View className="gap-2">
@@ -74,21 +100,32 @@ export default function RouteDetailScreen() {
                 Reliabilitas (Tepat Waktu)
               </Text>
               <Text className="text-light-1 text-sm font-bold">
-                {reliabilityPercent}%
+                {reliabilityPercent != null ? `${reliabilityPercent}%` : "Data belum tersedia"}
               </Text>
             </View>
-            <View className="h-1.5 bg-dark-4 rounded-full overflow-hidden">
-              <View
-                className="h-full bg-primary-emerald rounded-full"
-                style={{ width: `${reliabilityPercent}%` }}
-              />
-            </View>
+            {reliabilityPercent != null && (
+              <View className="h-1.5 bg-dark-4 rounded-full overflow-hidden">
+                <View
+                  className="h-full bg-primary-emerald rounded-full"
+                  style={{ width: `${reliabilityPercent}%` }}
+                />
+              </View>
+            )}
           </View>
+
+          {departureLabel && (
+            <View className="flex-row justify-between items-center pt-2 border-t border-light-3/10">
+              <Text className="text-light-2 text-sm">Berangkat Pukul</Text>
+              <Text className="text-light-1 text-sm font-semibold">
+                {departureLabel}
+              </Text>
+            </View>
+          )}
 
           <View className="flex-row justify-between items-center pt-2 border-t border-light-3/10">
             <Text className="text-light-2 text-sm">Estimasi Biaya</Text>
             <Text className="text-light-1 text-lg font-bold">
-              Rp {routeData.cost_idr.toLocaleString()}
+              {formatRupiah(routeData.cost_idr)}
             </Text>
           </View>
         </View>

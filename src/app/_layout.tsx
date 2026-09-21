@@ -1,19 +1,46 @@
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
-import { ActivityIndicator, View } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect, useState } from "react";
+import { View } from "react-native";
+import SplashIntro from "@/components/SplashIntro";
 import "../../global.css";
+
+// Task App-23: keep the native splash (static background image, per
+// app.json) on screen until fonts are ready AND our custom intro overlay is
+// about to render its first frame — otherwise the native splash would hide
+// itself as soon as JS starts, exposing a blank/spinner frame before the
+// intro's background image paints. Must be called at module scope, before
+// the component mounts.
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     "Plus-Jakarta-Sans": require("@/assets/fonts/PlusJakartaSans-VariableFont_wght.ttf"),
   });
+  // Starts true so the intro overlay is what the native splash hands off
+  // to; flips to false once, permanently, when SplashIntro finishes — a
+  // plain state toggle, not a route, so it has no navigation history entry
+  // and can never be revisited or re-shown later in the same app session.
+  const [showIntro, setShowIntro] = useState(true);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      // The intro overlay's background image is a bundled local asset, so
+      // it's already painted by the time this effect runs — hiding the
+      // native splash here is a same-frame swap, not a flash to blank.
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
 
   if (!fontsLoaded) {
-    return (
-      <View className="flex-1 justify-center items-center bg-[#001D4A]">
-        <ActivityIndicator size={"large"} color={"#ffffff"} />
-      </View>
-    );
+    // Native splash is still covering the screen (see preventAutoHideAsync
+    // above) — nothing to render yet.
+    return null;
+  }
+
+  if (showIntro) {
+    return <SplashIntro onFinish={() => setShowIntro(false)} />;
   }
 
   return (
