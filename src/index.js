@@ -7,6 +7,7 @@ require("dotenv").config();
 const stationRoutes = require("./routes/stationRoutes");
 const fleetRoutes = require("./routes/fleetRoutes");
 const flagRoutes = require("./routes/flagRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use("/api/stations", stationRoutes);
 app.use("/api/fleets", fleetRoutes);
 app.use("/api/flags", flagRoutes);
+app.use("/api/admins", adminRoutes);
 
 // Health check sederhana
 app.get("/api/health", (req, res) => {
