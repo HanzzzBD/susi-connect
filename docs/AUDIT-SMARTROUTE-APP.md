@@ -1,6 +1,6 @@
 # Audit repo smartroute-app terhadap task SUSI Connect
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 1.0 · **Repo diaudit:** `https://github.com/lippbyte/smartroute-app` (commit `0a92f40`, dibaca saja, tidak dijalankan)
+**Tanggal:** 22 Oktober 2026 · **Versi:** 1.1 · **Repo diaudit:** `https://github.com/lippbyte/smartroute-app` (commit `0a92f40`, dibaca saja, tidak dijalankan)
 **Dibandingkan dengan:** TICKETS.md v2.3, TASKS.md v1.3 (sudah diselaraskan dengan audit ini)
 
 ## Log Perubahan
@@ -8,6 +8,7 @@
 | Versi | Tanggal | Perubahan |
 | --- | --- | --- |
 | 1.0 | 22 Okt 2026 | Audit pertama. Keputusan tim setelah audit: mobile SUSI **mengikuti desain app SmartRoute**, `mobile/` dibuat dari `smartroute/` lewat **git subtree lalu dipangkas**, izin panitia **mencakup seluruh repo smartroute-app**. |
+| 1.1 | 22 Okt 2026 | Rekomendasi moda untuk umum masuk MVP: layar rute/navigasi/halte app SmartRoute **dipertahankan** (tidak dipangkas), `backend/backend-skeleton` + `backend/otp2-setup` dipakai sebagai layanan `mobility/`. §4 diperbarui. |
 
 ---
 
@@ -26,8 +27,8 @@
 | `smartroute/` | Aplikasi mobile Expo SmartRoute (cari rute, navigasi, peta kepadatan, halte terdekat, asisten AI) — 79 file `src/`, ± 9 rb baris | **Dipakai** sebagai basis `mobile/` (subtree + pangkas) |
 | `smartroute-dashboard/` | Dashboard web operator | Sudah ada di `web/` (identik) |
 | `smartroute-backend/` | API dashboard (Express + PostgreSQL) | Sudah ada di `backend/` (identik) |
-| `backend/backend-skeleton/` | API utama SmartRoute (TS, Express 5, OTP, OpenRouter) | Tidak dipakai; pola ditiru |
-| `backend/otp2-*` | Mesin routing OpenTripPlanner + GTFS TransJakarta/KRL/MRT/LRT | Tidak dipakai (SUSI memakai OpenRouteService) |
+| `backend/backend-skeleton/` | API utama SmartRoute (TS, Express 5, OTP, OpenRouter) | **Dipakai** sebagai layanan `mobility/` (v1.1); asisten OpenRouter tidak dipakai |
+| `backend/otp2-setup/` | Mesin routing OpenTripPlanner + GTFS TransJakarta/KRL/MRT/LRT | **Dipakai** (v1.1) untuk M15; ORS tetap untuk rute aksi berhambatan |
 | `testing-1/` | YOLO11 penghitung orang | Tidak dipakai |
 | `task/`, `backend/task/` | Dokumen task SmartRoute | Referensi saja |
 | `docs/` | Mockup Figma, arsitektur | `Smartroute_mockup.png` = acuan visual mobile |
@@ -86,9 +87,10 @@ Status: **Sudah** = tinggal disesuaikan nama/konfigurasi · **Sebagian** = pola/
 | `app.json`: `name`, `slug`, `scheme`, `android.package` (`com.inouerakan.smartroute`), `owner` (`lippbytes-team`), `extra.eas.projectId` | Ganti ke SUSI (`susi-connect`, `id.susiconnect.app` [ASUMSI]) dan buat proyek EAS baru | Identitas aplikasi berbeda |
 | Ikon, splash (`assets/splash`, `assets/images`), `SplashIntro.tsx`, `ScreenBackground.tsx` (gambar Monas) | Ganti aset SUSI; latar layar memakai warna biru malam yang sama tanpa gambar Monas [ASUMSI] | Branding |
 | Teks izin lokasi "Izinkan SmartRoute …" | Ganti dengan teks UI-SPEC M (lokasi, kamera, galeri) | Teks SUSI |
-| Layar & komponen transit: `(tabs)/route/*`, `navigate.tsx`, `nearby-stops.tsx`, `all-stops-map.tsx`, `components/transit/*`, `components/navigate/*` (setelah pola peta disalin ke komponen SUSI), `ComparisonCard`, `PreferenceCard`, `DepartureTimeField`, `RealTimeInfoCard`, `RouteCard`, `RouteDetailCard`, `QuickLocation*`, `LocationAutocompleteField`, `data/mockRoutes.ts`, `services/routeService.ts`, `routeStore.ts`, `nearbyStopsService.ts`, `stationSearchService.ts`, `crowdService.ts`, `utils/currency.ts`, `departureTime.ts`, `navInstructions.ts`, `navProgress.ts`, `quickLocations.ts`, `stopActions.ts`, `hooks/useStopSearch.ts`, `useLocationSuggestions.ts` | Hapus | Domain transportasi |
-| `utils/geocode.ts` (Nominatim online) | Hapus; SUSI memakai daftar `areas` (Z3) | Butuh internet; tidak cocok offline |
-| `react-native-maps` | Hapus dari dependensi bila tidak ada lagi pemakai | SUSI hanya MapLibre (SDD D19) |
+| Layar & komponen rute/transit (`(tabs)/route/*`, `navigate.tsx`, `nearby-stops.tsx`, `all-stops-map.tsx`, `components/transit/*`, `components/navigate/*`, `ComparisonCard`, `PreferenceCard`, `RouteCard`, `RouteDetailCard`, servis rute/halte) | **Pertahankan** (v1.1) — menjadi M-S20/M-S21; base URL diarahkan ke `/api/mobility/*` | M15 |
+| Laporan kepadatan (`crowdService.ts`, `CrowdReportModal` versi kepadatan, `RealTimeInfoCard`), `data/mockRoutes.ts` | Hapus | Bukan cakupan SUSI |
+| `utils/geocode.ts`, `services/mapService.ts` (Nominatim online) | Pertahankan untuk M-S20, dengan cadangan pencarian halte V2 saat offline | M15-3 |
+| `react-native-maps` | Hapus dari dependensi (dicek: tidak di-import di mana pun, hanya disebut di komentar) | SUSI hanya MapLibre (SDD D19) |
 | `@expo/ngrok`, URL ngrok di `eas.json` | Ganti dengan Cloudflare + hotspot (SDD §8A.6) | Keputusan jaringan |
 | `constants/developerInfo.ts`, `components/account/DeveloperInfoSheet.tsx` | Ganti isi tim SUSI atau hapus | Konten SmartRoute |
 | `tsconfig.json` | Pertahankan (tanpa `baseUrl`, aman di TypeScript 6 — dicek) | — |

@@ -1,6 +1,6 @@
 # DEMO-SCRIPT SUSI Connect — Grand Final & Video
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 2.0 · **Pemilik:** PM (naskah, presenter), FS (operator laptop), BE (cadangan teknis), DA (angka & slide)
+**Tanggal:** 22 Oktober 2026 · **Versi:** 2.1 · **Pemilik:** PM (naskah, presenter), FS (operator laptop), BE (cadangan teknis), DA (angka & slide)
 **Dirujuk dari:** PRD §16 · Data: PRD §12 · Layar: UI-SPEC.md
 
 ## Log Perubahan
@@ -11,6 +11,7 @@
 | 1.1 | 22 Okt 2026 | Klik disesuaikan dengan layout smartroute-dashboard yang dipertahankan: moderasi, rekomendasi, dan hambatan dikerjakan di peta layar penuh (panel mengambang + modal), navigasi lewat segmen `ViewToggle`. |
 | 1.2 | 22 Okt 2026 | Hasil audit: langkah 7 memakai akun moderator (metrik token AI & pelanggaran keselamatan tidak tersedia untuk tamu); tidak ada kartu "Laporan selesai" → pakai "Tingkat penyelesaian" + hitungan status; langkah 3 menambah koreksi perkiraan relawan/keahlian karena skor 0,96/0,75/0,66 bergantung pada keluaran triase. |
 | 2.0 | 22 Okt 2026 | Demo memakai **aplikasi mobile di 3 HP Android** (warga, koordinator, relawan) + **web di laptop** (moderator, dashboard); jaringan Cloudflare Tunnel dengan cadangan hotspot; ditampilkan lewat scrcpy. |
+| 2.1 | 22 Okt 2026 | Langkah 5 menambah opsi ≤ 20 dtk rute angkutan umum ke lokasi (M15) dan notifikasi push (M17); porsi moda dijaga kecil (PRD R19). |
 
 ---
 
@@ -87,7 +88,8 @@ Format: **Waktu · Profil · Klik/aksi → hasil yang harus terlihat · Kalimat 
 2. **RoutePanel**: asal **"Titik kumpul"**, tujuan **"Lokasi → titik buang"**, moda **"Motor/mobil"** → garis rute + "± x km · ± y menit (perkiraan)", lencana **"Rute OpenRouteService"**.
 3. P3 (Sari): segmen **"Hambatan"** → panel **Hambatan Jalan** (kiri atas) terbuka → klik peta di **KOORDINAT_HAMBATAN** → modal form → jenis *Perbaikan/galian jalan*, radius 60 m, keterangan **T4**, berlaku default 7 hari → **"Simpan hambatan"**.
 4. P4: klik **"Hitung ulang rute"** (atau muat ulang) → garis **berubah**, teks **"Menghindari 1 hambatan: Galian saluran"**.
-5. (Opsional bila waktu) **"Bandingkan moda"** → tabel jalan kaki / sepeda / motor-mobil berlabel perkiraan.
+5. (Opsional, ≤ 20 dtk) tombol **"Rute angkutan umum ke lokasi"** → hasil TransJakarta/KRL/MRT/LRT dari mesin rute SmartRoute (M15). Notifikasi push "Kamu ditugaskan…" muncul di HP Dimas bila online (M17).
+6. (Opsional bila waktu) **"Bandingkan moda"** → tabel jalan kaki / sepeda / motor-mobil berlabel perkiraan.
 - **Kalimat:** "Rute ke lokasi aksi memperhitungkan hambatan yang ditandai komunitas atau kelurahan, dan hambatan kedaluwarsa otomatis tidak dipakai."
 - **Cadangan:** ORS gagal → saklar `ROUTING_MODE=cache` (rute direkam saat gladi dengan dan tanpa hambatan) → lencana "Rute tersimpan". Cache juga gagal → garis lurus berlabel jujur, jelaskan.
 

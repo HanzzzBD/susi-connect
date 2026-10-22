@@ -1,6 +1,6 @@
 # UI-SPEC SUSI Connect — Spesifikasi Layar & Teks UI
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 2.2 · **Pemilik:** PM (teks & wireframe), FS (implementasi)
+**Tanggal:** 22 Oktober 2026 · **Versi:** 3.0 · **Pemilik:** PM (teks & wireframe), FS (implementasi)
 **Dirujuk dari:** [PRD.md](PRD.md) §9 · [SDD.md](SDD.md) §8.5 (route map) · Endpoint: [API.md](API.md)
 
 ## Log Perubahan
@@ -13,6 +13,7 @@
 | 2.0 | 22 Okt 2026 | Bagian baru **M — Aplikasi mobile**: tab per persona, perbedaan tata letak tiap layar (M-S01–M-S18), teks izin lokasi/kamera/galeri, layar baru M-S19 Pengaturan server dan banner jaringan cadangan. Web hanya S01, S02, S06, S07, S14, S15, S17 (SDD D18); layar S03–S05, S08–S13, S16, S18 hanya di mobile. |
 | 2.1 | 22 Okt 2026 | Resep visual & token dipindah ke DESIGN.md; tema gelap/terang mengikuti sistem; kelas di dokumen ini memakai token semantik (`surface`, `ink`). |
 | 2.2 | 22 Okt 2026 | Gaya mobile = app SmartRoute (DESIGN §7), bukan gaya dashboard; isi layar tidak berubah. |
+| 3.0 | 22 Okt 2026 | Layar mobile baru: M-S20/M-S21 rute moda umum (dari app SmartRoute), M-S22 admin mobile; tab Rute untuk warga & relawan; tab admin; teks izin notifikasi push. |
 
 ---
 
@@ -87,12 +88,12 @@ Isi setiap layar mobile (elemen, teks, validasi, state, endpoint) **sama dengan 
 | Persona | Tab |
 | --- | --- |
 | Tamu | Peta · Dampak · Masuk |
-| Warga | Peta · Lapor · Laporanku · Lainnya |
-| Relawan | Peta · Aksi · Lapor · Lainnya |
+| Warga | Peta · Lapor · Rute · Laporanku · Lainnya |
+| Relawan | Peta · Aksi · Rute · Lapor · Lainnya |
 | Koordinator | Rekomendasi · Aksi · Hambatan · Lainnya |
 | Moderator | Moderasi · Bukti · Peta · Lainnya |
 | Instansi | Rujukan · Hambatan · Lainnya |
-| Admin | (layar info) "Panel admin tersedia di web: <URL web>" |
+| Admin | Pengguna · Komunitas · Log AI · Lainnya (Kanal instansi, Laporan ditolak) |
 
 "Lainnya" = Notifikasi, Dampak, Tentang AI, Bantuan (chatbot), Pengaturan server, Keluar. Lonceng notifikasi di header kanan.
 
@@ -121,6 +122,14 @@ Isi setiap layar mobile (elemen, teks, validasi, state, endpoint) **sama dengan 
 | Lokasi | "SUSI Connect memakai lokasimu hanya untuk menandai titik laporan dan menghitung rute ke lokasi aksi. Lokasimu tidak disimpan." | "Izin lokasi ditolak. Tandai titik secara manual di peta." |
 | Kamera | "Kamera dipakai untuk memotret masalah dan bukti penyelesaian. Data lokasi di foto dihapus otomatis." | "Izin kamera ditolak. Pilih foto dari galeri." |
 | Galeri | "Pilih foto masalah atau bukti dari galeri." | "Izin galeri ditolak. Ambil foto dengan kamera." |
+
+**M-S20 — Cari rute (moda umum)** — layar beranda/rute app SmartRoute dipertahankan: field "Dari" (GPS otomatis) dan "Ke" (pencarian lokasi; offline memakai daftar halte V2), "Waktu berangkat", tombol "Cari rute"; rekomendasi cepat. Endpoint V1–V3. State galat layanan: "Layanan rute sedang tidak tersedia. Coba lagi sebentar." Dari detail aksi tersedia tombol "Rute angkutan umum ke lokasi" yang mengisi "Ke" = lokasi aksi.
+
+**M-S21 — Hasil, perbandingan, detail & navigasi rute** — layar hasil (tab Terbaik/Termurah/Tercepat/Ternyaman), `ComparisonCard`, detail ruas, dan navigasi app SmartRoute dipertahankan; setiap waktu & tarif berlabel "perkiraan" + sumber ("jadwal GTFS", "tarif resmi per <tanggal>").
+
+**M-S22 — Admin mobile** — tab Pengguna (U1–U3), Komunitas (G1–G6), Log AI (U4); di "Lainnya": Kanal instansi (H1–H3), Laporan ditolak + "Buka ulang" (R9). Elemen, validasi, dan teks sama dengan S17; form dibuka sebagai layar penuh.
+
+**Izin notifikasi push** (setelah login pertama): "Izinkan SUSI Connect mengirim notifikasi saat laporan atau tugasmu berubah status." Bila ditolak: "Notifikasi tetap bisa dilihat di lonceng." Ketuk notifikasi → buka `link`.
 
 **M-S19 — Pengaturan server**
 
