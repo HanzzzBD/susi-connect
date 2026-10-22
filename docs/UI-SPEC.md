@@ -1,6 +1,6 @@
 # UI-SPEC SUSI Connect — Spesifikasi Layar & Teks UI
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 1.2 · **Pemilik:** PM (teks & wireframe), FS (implementasi)
+**Tanggal:** 22 Oktober 2026 · **Versi:** 2.2 · **Pemilik:** PM (teks & wireframe), FS (implementasi)
 **Dirujuk dari:** [PRD.md](PRD.md) §9 · [SDD.md](SDD.md) §8.5 (route map) · Endpoint: [API.md](API.md)
 
 ## Log Perubahan
@@ -10,12 +10,15 @@
 | 1.0 | 22 Okt 2026 | Dokumen baru. Mencakup semua route SDD §8.5 (S01–S18). Perbaikan dari SDD v1 §9: (1) route `/aksi` (daftar aksi saya), `/verifikasi-bukti`, `/rujukan` (daftar), `/notifikasi`, `/admin` ditambahkan karena endpoint-nya ada tetapi layarnya belum; (2) peta kerja memakai `MapMarker` (bukan `MapClusterLayer`) agar warna per status bisa ditampilkan. |
 | 1.1 | 22 Okt 2026 | Tampilan & layout **smartroute-dashboard dipertahankan** (permintaan tim): tema gelap + font mono, navigasi `ViewToggle`, S02/S06/S08/S13 memakai satu `MapWorkspace` (peta layar penuh + panel mengambang + modal, dari `pages/Map.tsx`), S14 memakai layout `pages/Dashboard.tsx`; layar lain dibuat dengan gaya kartu yang sama. Ditambah route `/peta` dan `/dashboard`. Isi elemen, teks, validasi, dan endpoint tidak berubah. |
 | 1.2 | 22 Okt 2026 | Hasil audit — endpoint yang belum punya layar diberi tombol: X4 "Ubah aksi" & T1 "Tambah tugas" (S11), R8 "Kembalikan ke jalur komunitas" (S12), R9 "Buka ulang" (S17 tab baru). Konfirmasi hambatan S01 untuk warga dipindah ke `/peta` (sebelumnya hanya di `/hambatan` yang tidak bisa dibuka warga). Segmen Koordinator menambah "Lapor". Sumber data kartu dashboard = K1 `breakdown`. |
+| 2.0 | 22 Okt 2026 | Bagian baru **M — Aplikasi mobile**: tab per persona, perbedaan tata letak tiap layar (M-S01–M-S18), teks izin lokasi/kamera/galeri, layar baru M-S19 Pengaturan server dan banner jaringan cadangan. Web hanya S01, S02, S06, S07, S14, S15, S17 (SDD D18); layar S03–S05, S08–S13, S16, S18 hanya di mobile. |
+| 2.1 | 22 Okt 2026 | Resep visual & token dipindah ke DESIGN.md; tema gelap/terang mengikuti sistem; kelas di dokumen ini memakai token semantik (`surface`, `ink`). |
+| 2.2 | 22 Okt 2026 | Gaya mobile = app SmartRoute (DESIGN §7), bukan gaya dashboard; isi layar tidak berubah. |
 
 ---
 
 ## 0. Aturan bersama
 
-**Bahasa visual (dari smartroute-dashboard, dipertahankan)** — latar gelap `dark-1`, kartu bergaris tipis `border-light-1/25 rounded-xl`, angka & label `font-mono`, judul `font-sans`, animasi masuk halus, panel yang bisa dilipat (ikon panah), marker peta berdenyut. Warna status: SDD §8.7.
+**Bahasa visual (dari smartroute-dashboard, dipertahankan; resep lengkap & token di [DESIGN.md](DESIGN.md))** — tema **mengikuti sistem** (gelap = persis repo lama, terang = turunan), latar `surface`, kartu bergaris tipis `border-ink/25 rounded-xl`, angka & label `font-mono`, judul `font-sans`, animasi masuk halus, panel yang bisa dilipat (ikon panah), marker peta berdenyut. Warna status: SDD §8.7.
 
 **Dua kerangka halaman**
 
@@ -74,6 +77,62 @@
 **Aksesibilitas** — semua kontrol bisa keyboard (urutan tab mengikuti urutan elemen di tabel); target sentuh ≥ 44 px; status tidak hanya warna (ikon + teks); gambar punya `alt` ("Foto laporan sampah, Tebet Barat"); kontras ≥ 4,5:1; `prefers-reduced-motion` mematikan animasi `motion`.
 
 ---
+
+## M — Aplikasi mobile (Expo)
+
+Isi setiap layar mobile (elemen, teks, validasi, state, endpoint) **sama dengan layar S-nya** di dokumen ini; bagian ini hanya mengatur perbedaan tata letak dan perilaku khas HP. Platform per layar: SDD §8A.2.
+
+**M0 — Kerangka & tab bawah per persona** (gaya app SmartRoute: latar biru malam, kartu terang, tab bar `CustomTabBar` — DESIGN §7; ikon `@expo/vector-icons`; label teks selalu tampil)
+
+| Persona | Tab |
+| --- | --- |
+| Tamu | Peta · Dampak · Masuk |
+| Warga | Peta · Lapor · Laporanku · Lainnya |
+| Relawan | Peta · Aksi · Lapor · Lainnya |
+| Koordinator | Rekomendasi · Aksi · Hambatan · Lainnya |
+| Moderator | Moderasi · Bukti · Peta · Lainnya |
+| Instansi | Rujukan · Hambatan · Lainnya |
+| Admin | (layar info) "Panel admin tersedia di web: <URL web>" |
+
+"Lainnya" = Notifikasi, Dampak, Tentang AI, Bantuan (chatbot), Pengaturan server, Keluar. Lonceng notifikasi di header kanan.
+
+**Perbedaan per layar**
+
+| Mobile | Dari | Perbedaan |
+| --- | --- | --- |
+| M-S01 Masuk | S01 | Akun demo sebagai daftar tombol besar; tautan "Pengaturan server" di bawah |
+| M-S02 Peta | S02 | Peta layar penuh + *bottom sheet* (40%) berisi Ringkasan/daftar; tombol mengambang "+ Lapor" (warga/relawan); konfirmasi hambatan S01 di sheet |
+| M-S03A/B Lapor | S03 | Tab atas "Ceritakan" / "Formulir"; tombol "Ambil foto" (kamera) & "Pilih dari galeri"; tombol "Pakai lokasi saya" meminta izin |
+| M-S04/M-S05 | S04, S05 | Detail = layar penuh (bukan modal); galeri foto geser |
+| M-S06 Moderasi | S06 + S07 | Tab atas "Laporan" / "Bukti"; detail di layar penuh; tombol aksi di bar bawah tetap |
+| M-S08 | S08 | Daftar kartu; rincian skor di layar detail |
+| M-S09 | S09 | Form bertahap 3 langkah: Info → Titik (peta) → Tugas & keselamatan |
+| M-S10/M-S11 | S10, S11 | Detail aksi: tab "Tugas" / "Rute" / "Bukti"; tombol "Saya sudah tiba" besar di bawah |
+| M-S12 | S12 | Tombol "Salin draf" + "Buka <kanal>" membuka browser |
+| M-S13 | S13 | Tekan lama di peta untuk menaruh titik hambatan |
+| M-S14 | S14 | 4 KPI + ringkasan status; metrik lengkap di web |
+| M-S15, M-S16, M-S18 | S15, S16, S18 | Chatbot = layar sendiri di "Lainnya → Bantuan" |
+| M-S19 Pengaturan server | baru | Lihat di bawah |
+
+**Teks izin perangkat**
+
+| Izin | Teks penjelasan (sebelum dialog sistem) | Bila ditolak |
+| --- | --- | --- |
+| Lokasi | "SUSI Connect memakai lokasimu hanya untuk menandai titik laporan dan menghitung rute ke lokasi aksi. Lokasimu tidak disimpan." | "Izin lokasi ditolak. Tandai titik secara manual di peta." |
+| Kamera | "Kamera dipakai untuk memotret masalah dan bukti penyelesaian. Data lokasi di foto dihapus otomatis." | "Izin kamera ditolak. Pilih foto dari galeri." |
+| Galeri | "Pilih foto masalah atau bukti dari galeri." | "Izin galeri ditolak. Ambil foto dengan kamera." |
+
+**M-S19 — Pengaturan server**
+
+| # | Elemen | Teks / validasi |
+| --- | --- | --- |
+| 1 | Status | "Terhubung ke: api.<domain> (internet)" / "Terhubung ke: 192.168.137.1 (hotspot laptop)" / "Tidak terhubung" |
+| 2 | Tombol | "Uji koneksi" → `GET /health`; sukses: "Server merespons dalam <n> ms" |
+| 3 | Field | "URL server manual (opsional)"; format URL http/https → "Format URL tidak valid" |
+| 4 | Saklar | "Pindah otomatis ke hotspot bila internet putus" (default aktif) |
+| 5 | Info | "Mode AI: …, Mode rute: …" dari Z1 |
+
+Banner jaringan cadangan (kuning, di atas semua layar): **"Terhubung lewat hotspot laptop (tanpa internet). Peta dan saran AI memakai mode cadangan."**
 
 ## S01 — Masuk (`/login`)
 

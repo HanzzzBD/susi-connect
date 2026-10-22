@@ -1,6 +1,6 @@
 # DEMO-SCRIPT SUSI Connect — Grand Final & Video
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 1.2 · **Pemilik:** PM (naskah, presenter), FS (operator laptop), BE (cadangan teknis), DA (angka & slide)
+**Tanggal:** 22 Oktober 2026 · **Versi:** 2.0 · **Pemilik:** PM (naskah, presenter), FS (operator laptop), BE (cadangan teknis), DA (angka & slide)
 **Dirujuk dari:** PRD §16 · Data: PRD §12 · Layar: UI-SPEC.md
 
 ## Log Perubahan
@@ -10,6 +10,7 @@
 | 1.0 | 22 Okt 2026 | Dokumen baru, menurunkan PRD v1 §16 menjadi klik demi klik. Perubahan urutan: langkah rute (v1 3:30–4:20) dipindah setelah "buat aksi" karena rute membutuhkan `action_id` (API P1). Kasus duplikat & bahaya dipindah ke cadangan Q&A agar 7 menit cukup. |
 | 1.1 | 22 Okt 2026 | Klik disesuaikan dengan layout smartroute-dashboard yang dipertahankan: moderasi, rekomendasi, dan hambatan dikerjakan di peta layar penuh (panel mengambang + modal), navigasi lewat segmen `ViewToggle`. |
 | 1.2 | 22 Okt 2026 | Hasil audit: langkah 7 memakai akun moderator (metrik token AI & pelanggaran keselamatan tidak tersedia untuk tamu); tidak ada kartu "Laporan selesai" → pakai "Tingkat penyelesaian" + hitungan status; langkah 3 menambah koreksi perkiraan relawan/keahlian karena skor 0,96/0,75/0,66 bergantung pada keluaran triase. |
+| 2.0 | 22 Okt 2026 | Demo memakai **aplikasi mobile di 3 HP Android** (warga, koordinator, relawan) + **web di laptop** (moderator, dashboard); jaringan Cloudflare Tunnel dengan cadangan hotspot; ditampilkan lewat scrcpy. |
 
 ---
 
@@ -20,14 +21,15 @@
 | 1 | Seed bersih | `cd backend && npm run seed` (H-1 malam, **sesudah** gladi rekam cache rute) | Ringkasan akun tercetak |
 | 2 | Cache AI & rute | `npm run ai:record` dan gladi online penuh 1× (H-1) ; `npm run routes:export` | File baru di `seed/ai-cache/`, `seed/route-cache.json` |
 | 3 | Mode | `.env` backend: `AI_MODE=live`, `ROUTING_MODE=live`; web: `VITE_MAP_STYLE=online`. **Saklar cadangan** disiapkan sebagai `backend/.env.offline` + `web/.env.offline` | `GET /api/health` sesuai |
-| 4 | Profil browser | 4 profil Chrome, sudah login: **P1 Warga Rina**, **P2 Moderator Budi**, **P3 Koordinator Sari**, **P4 Relawan Dimas**; tab ke-5 tamu untuk dashboard | Tidak perlu login di depan juri |
+| 4 | Perangkat | **HP-A** (Android) login **P1 Warga Rina**; **HP-B** login **P3 Koordinator Sari**; **HP-C** login **P4 Relawan Dimas**; **laptop** Chrome login **P2 Moderator Budi** (web) + tab dashboard. Layar HP ditampilkan ke proyektor dengan `scrcpy` via USB (satu jendela per HP) [PERLU DIVERIFIKASI beberapa instance sekaligus] | Tidak perlu login di depan juri |
+| 4b | Jaringan | `cloudflared tunnel run susi` aktif; hotspot laptop menyala dan ketiga HP sudah pernah tersambung; di HP: Pengaturan server → "Uji koneksi" hijau | Banner jaringan tidak muncul (internet) |
 | 5 | Layar | Zoom browser 110%, mode terang, notifikasi OS mati, baterai > 80%, charger | — |
 | 6 | Laptop cadangan | Setup identik, seed sama, di meja | Bisa menjalankan langkah 1–9 |
 | 7 | Video cadangan | `demo-backup.mp4` lokal di desktop | Bisa diputar tanpa internet |
 | 8 | Foto demo | `~/Desktop/demo/sampah-before.jpg`, `sampah-after.jpg`, `trotoar.jpg` (foto buatan tim, tanpa wajah/plat) | — |
 | 9 | Clipboard teks | File `demo-teks.txt` berisi semua teks yang diketik di bawah (salin-tempel bila gugup) | — |
 
-**Aturan saklar cadangan (dipakai di langkah mana pun bila internet/API gagal):** FS menghentikan backend, `cp .env.offline .env`, `npm run dev` (≤ 20 dtk), muat ulang tab. Presenter berkata: *"Kami pindah ke mode cadangan — lihat lencananya, aplikasi jujur memberi tahu bahwa ini aturan otomatis dan rute tersimpan."* Ini justru menunjukkan kriteria offline.
+**Jaringan HP:** bila internet venue putus, aplikasi otomatis pindah ke IP hotspot laptop (banner kuning "Terhubung lewat hotspot laptop"); bila tidak pindah dalam 10 dtk, buka Lainnya → Pengaturan server → pilih hotspot. **Aturan saklar cadangan (dipakai di langkah mana pun bila internet/API gagal):** FS menghentikan backend, `cp .env.offline .env`, `npm run dev` (≤ 20 dtk), muat ulang tab. Presenter berkata: *"Kami pindah ke mode cadangan — lihat lencananya, aplikasi jujur memberi tahu bahwa ini aturan otomatis dan rute tersimpan."* Ini justru menunjukkan kriteria offline.
 
 **Teks yang diketik** (juga di `demo-teks.txt`):
 
@@ -74,7 +76,7 @@ Format: **Waktu · Profil · Klik/aksi → hasil yang harus terlihat · Kalimat 
 1. Segmen **"Rekomendasi"** → panel kanan atas berisi kartu laporan Rina, skor **0,96** → klik → modal dengan **"Lihat rincian skor"** → tabel K 1,0×0,35 … dan kalimat "Fokus Sampah · Punya keahlian angkut & pilah · Satu kelurahan · 0,8 km · 6 dari 8 relawan tersedia".
 2. **"Terima & buat aksi"** → halaman Buat aksi; kotak **"Draf rencana dari AI"** (≤ 10 dtk) → **"Pakai draf"** → tugas *Pengumpulan & pemilahan (4)*, *Angkut ke TPS terdekat (2, butuh rute)*, *Dokumentasi (1)*, 2 catatan keselamatan.
 3. Tambah catatan keselamatan **T3**.
-4. Judul sudah terisi "Bersih lahan musala"; jadwal = besok 07.00 (default form); titik kumpul **Pos RW 05** dan titik buang **TPS Tebet Barat** sudah terisi default dari seed komunitas (default diisi FS-14 dari markas komunitas & TPS seed).
+4. Judul sudah terisi "Bersih lahan musala"; jadwal = besok 07.00 (default form); titik kumpul **Pos RW 05** dan titik buang **TPS Tebet Barat** sudah terisi default dari seed komunitas (default diisi MB-13 dari markas komunitas & TPS seed).
 5. **"Buat aksi"** → halaman aksi; toast "Aksi dibuat…".
 - **Kalimat:** "Rekomendasi bukan kotak hitam: setiap angka bisa dijelaskan. AI hanya membuat draf; catatan keselamatan wajib."
 - **Cadangan:** draf AI gagal → templat "Aturan otomatis", tetap lanjut. Pembuatan aksi gagal → buka aksi seed **A03** (laporan L03).
@@ -153,6 +155,8 @@ Rekam 1080p, 30 fps, kursor besar, teks keterangan di layar (font ≥ 32 px, 2�
 Fitur AI yang **wajib** terlihat (syarat lomba): chat → draf (Gemini), label triase + "Kenapa?", draf rencana aksi, draf instansi, chatbot FAQ. Unggah video paling lambat Jumat 13 Nov 23.00 (TICKETS PM-14).
 
 ---
+
+**Catatan perangkat per langkah:** langkah 2, 8 (P1) di HP-A; langkah 4 dan hambatan di langkah 5 (P3) di HP-B; langkah 5–6 relawan (P4) di HP-C; langkah 3, verifikasi bukti di langkah 6, dan langkah 7 (P2) di web laptop. Nama tombol mengikuti UI-SPEC bagian M (tab bawah: "Lapor", "Rekomendasi", "Aksi", "Hambatan"; detail aksi bertab "Tugas/Rute/Bukti"). Video demo (§2) wajib menampilkan aplikasi di HP sebagai produk utama.
 
 ## 3. Pembagian peran saat tampil
 

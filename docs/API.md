@@ -1,6 +1,6 @@
 # API SUSI Connect — Kontrak Endpoint
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 1.1 · **Status:** siap dipakai untuk tiket BE/FS
+**Tanggal:** 22 Oktober 2026 · **Versi:** 1.2 · **Status:** siap dipakai untuk tiket BE/FS
 **Dirujuk dari:** [SDD.md](SDD.md) §5 · **Skema DB:** [`db/migrations/`](../db/migrations)
 
 ## Log Perubahan
@@ -9,12 +9,13 @@
 | --- | --- | --- |
 | 1.0 | 22 Okt 2026 | Dokumen baru. Menggantikan tabel endpoint PRD v1 §14 dan aturan SDD v1 §5. Perbaikan inkonsistensi: (1) `POST /routes` (PRD) → `GET /routes` (SDD), dipilih **GET** karena idempoten dan bisa di-cache; (2) nilai `source` rute `live` (PRD) → `ors` (SDD), dipilih **`ors`**; (3) `PATCH /actions/:id/status` dan `DELETE /obstacles/:id` diganti endpoint aksi bernama (`/start`, `/submit`, `/cancel`, `/revoke`) sesuai aturan SDD; (4) `POST /auth/demo-login {role}` → `{email}` karena peran kini dua tingkat; (5) chatbot FAQ menjadi `POST /chat/faq` stateless, sesi chat hanya untuk mode lapor; (6) seluruh JSON memakai **snake_case** seperti baris PostgreSQL di repo lama (SDD v1 memakai camelCase di respons rute); (7) envelope galat memakai `error.code` (repo lama memakai `message` di tingkat atas). |
 | 1.1 | 22 Okt 2026 | Hasil audit: R3 `status` menerima beberapa nilai (filter "Dalam penanganan" di S02 butuh 3 status); K1 menambah `breakdown` (hitungan laporan & aksi per status, tugas terbuka) untuk kartu dashboard; `?token=` dibatasi ke `/files/*`. |
+| 1.2 | 22 Okt 2026 | Klien kedua (aplikasi mobile Expo) memakai kontrak yang sama lewat Cloudflare Tunnel/hotspot; mobile mengirim token lewat header juga untuk foto, sehingga `?token=` hanya dipakai web. |
 
 ---
 
 ## 1. Konvensi umum
 
-**Basis URL:** `http://localhost:5000/api` (`VITE_API_URL`).
+**Basis URL:** `http://localhost:5000/api` (web, `VITE_API_URL`); aplikasi mobile memakai `https://api.<domain>/api` lewat Cloudflare Tunnel dengan cadangan `http://<IP-hotspot>:5000/api` (SDD §8A.6). Kontrak identik untuk kedua klien.
 
 **Autentikasi:** header `Authorization: Bearer <jwt>`. JWT HS256 berisi `{ sub, role }`, berlaku 8 jam. Keanggotaan komunitas dibaca dari DB setiap request.
 

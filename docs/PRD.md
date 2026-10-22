@@ -1,6 +1,6 @@
 # PRD SUSI Connect — Product Requirements Document
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 2.2 · **Hackathon:** LOGICODIX 2026, Subtema 5 Civic Tech & Community Service
+**Tanggal:** 22 Oktober 2026 · **Versi:** 3.3 · **Hackathon:** LOGICODIX 2026, cabang **Mobile App Development**, Subtema 5 Civic Tech & Community Service
 **Sumber kebenaran fitur.** Teknis: [SDD.md](SDD.md) · Kontrak API: [API.md](API.md) · Layar: [UI-SPEC.md](UI-SPEC.md) · AI: [AI-PROMPTS.md](AI-PROMPTS.md) · Tiket: [TICKETS.md](TICKETS.md) · Demo: [DEMO-SCRIPT.md](DEMO-SCRIPT.md)
 
 Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta eksternal yang harus dicek · **[PERLU DATA]** angka belum ada · **[ASUMSI]** keputusan kecil penulis yang bisa diubah tim.
@@ -13,6 +13,10 @@ Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta ekst
 | 2.0 | 22 Okt 2026 | **Struktur:** bagian AI rinci, skema DB, dan endpoint dipindah ke AI-PROMPTS.md, `db/migrations/`, API.md; ditambah kamus istilah (§8), kriteria Given/When/Then untuk semua Must & Should (§9), data seed (§12), matriks keterlacakan (§11). **Keputusan baru:** wilayah pilot = Provinsi DKI Jakarta (kecamatan demo Tebet [ASUMSI]); monorepo; izin panitia pemakaian kode lama sudah ada; DA menulis matching & metrik; verifikator bukti = moderator **atau** pelapor asli; moderator/instansi per kecamatan; **tidak ada pemangkasan Must** (v1 §7.5 urutan pemangkasan dihapus atas keputusan tim, risikonya dicatat di §17 dan §18); kapasitas 10 jam/hari dan DA mengambil sebagian tiket backend/frontend (jawaban tim). **Perbaikan inkonsistensi:** (1) peran v1 §5 memuat relawan/koordinator sebagai `users.role` → dua tingkat (D2); (2) status v1 §10 vs SDD v1 §6.1 digabung (lihat §14); (3) `POST /routes` → `GET /routes`; (4) `PATCH /actions/:id/status` → endpoint aksi bernama; (5) nilai sumber rute `live` → `ors`; (6) tabel `activities` → `audit_logs`; (7) peta kerja memakai `MapMarker`; (8) hari kerja v1 §17 salah satu hari (Hari 1 = Sabtu 7 Nov, sesuai). |
 | 2.1 | 22 Okt 2026 | Keputusan 19: frontend mempertahankan tampilan & layout smartroute-dashboard (SDD §2.3, §8.6–8.7; UI-SPEC §0). Pemilik layar Rekomendasi (M06) pindah ke DA. |
 | 2.2 | 22 Okt 2026 | Hasil audit seed: L01–L03 (cadangan di titik demo) dipindah ke T − 8 hari dan diberi awalan "(Cadangan)" — sebelumnya laporan live akan tampil sebagai duplikat dari 3 laporan cadangan; L15 ke T − 9 hari; H01 dipindah keluar rute demo — sebelumnya rute awal di langkah 5 sudah membelok karena H01 sehingga efek hambatan live tidak jelas. Matriks M11 menambah R2. |
+| 3.0 | 22 Okt 2026 | **Cabang lomba = Mobile App Development** (koreksi dari tim): aplikasi Expo/React Native (`mobile/`, Android + iOS) memuat semua peran & fitur kecuali admin; web dirampingkan ke peta publik, dampak, moderasi/bukti, admin, login, Tentang AI. Peta mobile MapLibre RN (development build). Demo memakai HP asli lewat Cloudflare Tunnel dengan cadangan hotspot. Non-tujuan "aplikasi native" dihapus; risiko R15–R18; matriks memakai layar M-Sxx. Kapasitas 282/280 jam (TICKETS.md §0). |
+| 3.1 | 22 Okt 2026 | Keputusan 25: sistem desain (DESIGN.md) — monokrom, tema ikut sistem, shadcn gelap otomatis, mobile sama dengan web. Tambah 4 jam kerja (FS-34, MB-25). |
+| 3.2 | 22 Okt 2026 | Keputusan 26 (hasil audit smartroute-app): basis kode & desain mobile dari app SmartRoute; tema otomatis hanya web. Beban 279/280 j. |
+| 3.3 | 22 Okt 2026 | Risiko R16 & pertanyaan terbuka diselaraskan dengan audit (stack mobile sudah terbukti; tersisa PMTiles & iOS). |
 
 ---
 
@@ -38,6 +42,13 @@ Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta ekst
 | 16 | Verifikator bukti | Moderator(W) atau pelapor asli, bukan pengunggah |
 | 17 | Pemangkasan Must | Tidak ada pemangkasan (lihat §9.6) |
 | 18 | Kapasitas | 10 jam/hari per orang (dibantu AI coding); DA mengambil sebagian tiket backend & frontend sederhana; FS lembur ± 1 jam (TICKETS.md §0) |
+| 20 | Cabang lomba | **Mobile App Development** — produk utama adalah aplikasi mobile; web pendamping. (Mengoreksi `KONTEKS_SUSI_CONNECT.txt` bagian A yang menulis "tim memilih Web") |
+| 21 | Aplikasi mobile | **Expo / React Native** terpisah di `mobile/`, target **Android + iOS**, berisi **semua peran & fitur** kecuali panel admin |
+| 22 | Web | **Dirampingkan** ke: peta publik (S02), dashboard dampak (S14), moderasi & verifikasi bukti (S06, S07), admin (S17), login (S01), Tentang AI (S15) — tetap dengan tampilan smartroute-dashboard |
+| 23 | Peta mobile | **MapLibre React Native** dengan development build (bukan Expo Go) |
+| 24 | Jaringan demo | HP asli → backend laptop lewat **domain Cloudflare (Cloudflare Tunnel)**; cadangan otomatis ke **IP laptop lewat hotspot** bila internet mati |
+| 25 | Desain | DESIGN.md: monokrom (warna hanya untuk makna), tema **gelap/terang mengikuti sistem** (gelap = persis smartroute-dashboard), shadcn ikut lewat `class="dark"` otomatis, mobile **sama persis** dengan web |
+| 26 | Basis mobile | `mobile/` dibuat dari app SmartRoute (`smartroute/` di repo smartroute-app) lewat git subtree lalu dipangkas; mobile ikut **desain app SmartRoute** (terang, biru); izin panitia mencakup seluruh repo smartroute-app (AUDIT-SMARTROUTE-APP.md) |
 | 19 | Frontend | Pakai smartroute-dashboard apa adanya secara tampilan & layout (tema gelap, font mono, peta layar penuh + panel mengambang, layout dashboard KPI); halaman lama diadaptasi, bukan dibuang |
 
 ## 2. Ringkasan produk
@@ -87,7 +98,7 @@ Tidak ada klaim "belum ada produk serupa"; celahnya adalah jembatan *laporan →
 | G7 | Dashboard menghitung metrik dari DB | P4 | Angka berubah setelah verifikasi |
 | G8 | Demo lulus tanpa internet | — | Gladi Wi-Fi mati |
 
-**Non-tujuan (MVP):** rekomendasi moda untuk umum; angkutan umum real-time/tarif resmi; integrasi API instansi; aplikasi native; donasi/pembayaran/gamifikasi; moderasi otomatis penuh; navigasi belokan-demi-belokan; pendaftaran mandiri relawan ke komunitas (anggota ditambahkan koordinator/admin); notifikasi push/WA/email.
+**Non-tujuan (MVP):** rekomendasi moda untuk umum; angkutan umum real-time/tarif resmi; integrasi API instansi; panel admin di aplikasi mobile; notifikasi push (Expo Push butuh internet); rilis ke Play Store/App Store; donasi/pembayaran/gamifikasi; moderasi otomatis penuh; navigasi belokan-demi-belokan; pendaftaran mandiri relawan ke komunitas (anggota ditambahkan koordinator/admin); notifikasi push/WA/email.
 
 ## 6. Persona & peran
 
@@ -549,19 +560,19 @@ Dihitung oleh `GET /metrics/impact` (SQL di SDD §6.6). Data demo **sintetis**; 
 | Problem | Fitur | Layar | Endpoint | Tabel | Uji |
 | --- | --- | --- | --- | --- | --- |
 | semua | M01 | S01, semua (guard) | A1–A5 | `users`, `community_members`, `audit_logs` | `api/auth.test.js`, `api/rbac.test.js`, `unit/env.test.js` |
-| P1 | M02 | S03-B, S04, S05 | R1, R2, R4, Z2–Z4 | `reports`, `report_photos`, `report_status_history`, `areas`, `report_categories` | `api/reports.create.test.js`, `api/files.test.js` |
-| P1 | M03 | S03-A | C1–C3 | `chat_sessions`, `chat_messages`, `ai_analyses`, `reports` | `api/chat.test.js`, `unit/redact.test.js` |
+| P1 | M02 | M-S03B, M-S04, M-S05 (mobile) | R1, R2, R4, Z2–Z4 | `reports`, `report_photos`, `report_status_history`, `areas`, `report_categories` | `api/reports.create.test.js`, `api/files.test.js` |
+| P1 | M03 | M-S03A (mobile) | C1–C3 | `chat_sessions`, `chat_messages`, `ai_analyses`, `reports` | `api/chat.test.js`, `unit/redact.test.js` |
 | P2 | M04 | S05, S06 | (job dari R1/C3), R4 | `ai_analyses`, `reports` | `unit/fallback.test.js`, `unit/hardRules.test.js`, `unit/aiService.test.js`, `api/triage.test.js` |
-| P1, P2 | M05 | S06 | R2, R4–R9 | `reports`, `report_status_history`, `ai_analyses`, `matches` | `unit/reportStatus.test.js`, `api/moderation.test.js` |
-| P3 | M06 | S06 (hasil), S08 | R11, M1–M3 | `matches`, `communities`, `community_members`, `users` | `unit/matching.test.js`, `api/matches.test.js` |
-| P2 | M07 | S06, S12 | R6, F1–F4, H1 | `agency_referrals`, `agencies`, `evidences` | `api/referrals.test.js` |
-| P3, P4 | M08 | S09, S10, S11 | R12, X1–X7, T1–T6, G2 | `actions`, `tasks`, `task_assignments`, `ai_analyses` | `unit/actionStatus.test.js`, `api/actions.test.js`, `api/tasks.test.js` |
-| P5 | M09 | S11, S13 | P1, O1, O2, O4 | `road_obstacles`, `route_cache` | `unit/geo.test.js`, `unit/route.test.js` (ORS di-mock), `api/obstacles.test.js`, `api/routes.test.js` |
-| P4 | M10 | S05, S07, S11 | E1, E3, E4, X6 | `evidences`, `actions`, `reports` | `api/evidences.test.js` |
-| P4 | M11 | S02, S14 | K1, R3, R2 (ReportRankingCard saat login) | semua via SQL §6.6, view `reports_public` | `api/metrics.test.js`, `api/reports.public.test.js` |
-| P1 | M12 | S18 | C4 | `ai_analyses` | `api/faq.test.js`, `unit/faqFallback.test.js` |
+| P1, P2 | M05 | S06 (web), M-S06 (mobile) | R2, R4–R9 | `reports`, `report_status_history`, `ai_analyses`, `matches` | `unit/reportStatus.test.js`, `api/moderation.test.js` |
+| P3 | M06 | S06 (hasil), M-S08 | R11, M1–M3 | `matches`, `communities`, `community_members`, `users` | `unit/matching.test.js`, `api/matches.test.js` |
+| P2 | M07 | S06 (web), M-S12 | R6, F1–F4, H1 | `agency_referrals`, `agencies`, `evidences` | `api/referrals.test.js` |
+| P3, P4 | M08 | M-S09, M-S10, M-S11 | R12, X1–X7, T1–T6, G2 | `actions`, `tasks`, `task_assignments`, `ai_analyses` | `unit/actionStatus.test.js`, `api/actions.test.js`, `api/tasks.test.js` |
+| P5 | M09 | M-S11, M-S13 | P1, O1, O2, O4 | `road_obstacles`, `route_cache` | `unit/geo.test.js`, `unit/route.test.js` (ORS di-mock), `api/obstacles.test.js`, `api/routes.test.js` |
+| P4 | M10 | S07 (web), M-S05, M-S11 | E1, E3, E4, X6 | `evidences`, `actions`, `reports` | `api/evidences.test.js` |
+| P4 | M11 | S02, S14 (web), M-S02, M-S14 | K1, R3, R2 (ReportRankingCard saat login) | semua via SQL §6.6, view `reports_public` | `api/metrics.test.js`, `api/reports.public.test.js` |
+| P1 | M12 | M-S18 | C4 | `ai_analyses` | `api/faq.test.js`, `unit/faqFallback.test.js` |
 | etika | M13 | S05, S06, S09, S12, S15, S17, S18 | U4, Z1 (+ semua AI) | `ai_analyses` | `api/admin.test.js`, `unit/allowlist.test.js` |
-| demo | M14 | semua (banner) | Z1, A2, A3 | semua (`is_synthetic`) | `api/seed.test.js`, E2E manual DEMO-SCRIPT.md |
+| demo | M14 | semua (banner) + M-S19 Pengaturan server | Z1, A2, A3 | semua (`is_synthetic`) | `api/seed.test.js`, E2E manual DEMO-SCRIPT.md |
 | P5 | S01 | S13 | O2, O3 | `road_obstacles`, `obstacle_confirmations` | `api/obstacles.test.js` |
 | P5 | S02 | S11 | P2 | `route_cache` | `api/routes.test.js` |
 | P1 | S03 | S06 | R10, R7 | `reports` | `api/duplicates.test.js` |
@@ -715,13 +726,15 @@ State machine final ada di SDD §6.1 (laporan) dan §6.2 (aksi, tugas, rujukan) 
 | Performa | Halaman utama interaktif < 3 dtk di laptop demo; API non-AI p95 < 500 ms pada seed [ASUMSI target]; AI timeout 10 dtk | SDD §6.3 |
 | Green IT | LLM hanya pada event; hasil disimpan; model Flash; foto ≤ 1280 px WebP; cache rute 24 jam; polling 60 dtk; metrik token AI per laporan | §10 |
 | Aksesibilitas | WCAG AA kontras; keyboard; status ikon + teks; target 44 px; `alt`; `prefers-reduced-motion` | UI-SPEC §0 |
-| Responsif | Alur warga & relawan nyaman di 360 px | UI-SPEC |
+| Mobile | Aplikasi Expo berjalan di Android 10+ dan iOS 16+ [ASUMSI versi minimum]; layar 360–430 pt; izin kamera & lokasi diminta saat dibutuhkan dengan alasan berbahasa Indonesia; token di SecureStore | SDD §8A |
+| Jaringan mobile | URL backend utama = domain Cloudflare; bila `/health` gagal 2× → otomatis ke IP hotspot; dapat diganti manual di layar Pengaturan | SDD §8A.6 |
+| Responsif web | Web untuk desktop/laptop; halaman publik tetap terbaca di HP | UI-SPEC |
 | Offline | Lulus DEMO-SCRIPT.md dengan Wi-Fi mati | SDD §10 |
 | Kualitas kode | ESLint, uji unit + API, CI GitHub Actions, README | SDD §11, §12 |
 
 ## 16. Skenario demo Grand Final
 
-Naskah 7 menit klik demi klik, video 3–5 menit tanpa narasi, dan rencana cadangan per langkah: **DEMO-SCRIPT.md**. Ringkasan langkah: (1) masalah · (2) lapor via chat · (3) moderasi + koreksi AI · (4) matching + buat aksi · (5) rute + hambatan · (6) bukti + verifikasi · (7) dashboard · (8) cabang instansi · (9) etika & penutup.
+Naskah 7 menit klik demi klik (warga, koordinator, relawan di **HP**; moderator & dashboard di **web laptop**), video 3–5 menit tanpa narasi, dan rencana cadangan per langkah: **DEMO-SCRIPT.md**. Ringkasan langkah: (1) masalah · (2) lapor via chat · (3) moderasi + koreksi AI · (4) matching + buat aksi · (5) rute + hambatan · (6) bukti + verifikasi · (7) dashboard · (8) cabang instansi · (9) etika & penutup.
 
 ## 17. Rencana pengerjaan
 
@@ -744,6 +757,10 @@ Tiket ≤ 4 jam per hari, pemilik, dependensi, DoD, dan perbandingan dengan kapa
 | R11 | Etika | Laporan palsu/fitnah | Login wajib, moderasi, deteksi duplikat, alasan penolakan tercatat |
 | R12 | Etika | Foto wajah/plat, lokasi rumah | EXIF dihapus, blur, pembulatan lokasi, akses foto dibatasi |
 | R13 | Etika | Data ke penyedia AI | Allowlist + redaksi; halaman Tentang AI; cek kebijakan data tier [PERLU DIVERIFIKASI] |
+| R15 | Teknis | iOS tidak bisa dipasang (tidak ada Mac/akun Apple) | Android jadi platform demo utama; iOS ditunjukkan bila PRE-15 berhasil, dinyatakan jujur ke juri |
+| R16 | Teknis | Basemap offline (PMTiles) tidak didukung MapLibre RN 11.3.8 | Kombinasi Expo 57 + MapLibre RN 11 sudah terbukti di app SmartRoute (AUDIT §3.1); PMTiles dicek di PRE-15; rencana B: latar polos + batas kecamatan, titik/rute tetap tampil |
+| R17 | Teknis | Internet venue putus → domain Cloudflare mati | Fallback otomatis ke IP hotspot laptop (SDD §8A.6); uji di PM-13 |
+| R18 | Teknis | Dua klien (web + mobile) melebihi kapasitas (282/280 j) | Web dirampingkan; PM & DA mengerjakan layar mobile; Should UI mobile (S02, S05) tidak dijadwalkan |
 | R14 | Etika | Data sintetis dikira nyata | `is_synthetic`, banner, nama "(sintetis)", kalimat eksplisit saat presentasi |
 
 ## 19. Persiapan Q&A juri
@@ -763,6 +780,8 @@ Tiket ≤ 4 jam per hari, pemilik, dependensi, DoD, dan perbandingan dengan kapa
 | Apa yang AI, apa yang aturan? | LLM: memahami teks & menyusun draf. Aturan: bahaya. Algoritma: matching. Manusia: semua keputusan status. |
 | Green IT? | LLM per event, Flash, hasil disimpan, foto dikompres, cache rute, polling 60 dtk, metrik token per laporan. |
 | Beda dengan proyek tim sebelumnya? | Belum pernah dilombakan; panitia mengizinkan kode dasar; alur laporan → aksi → bukti baru. |
+| Kenapa Expo/React Native, bukan Flutter/native? | Satu bahasa (TypeScript) dengan web & tipe data yang sama (`shared/`), tim sudah menguasai React; Android & iOS dari satu kode. |
+| Kenapa masih ada web? | Moderator, admin, dan dashboard dampak lebih efisien di layar besar; warga, relawan, dan koordinator memakai aplikasi. |
 | Kenapa laporan campuran dua jalur? | Warga tidak perlu menunggu instansi untuk bagian yang bisa dikerjakan sendiri, dan instansi tetap mendapat permintaan untuk bagian kewenangannya. |
 
 ## 20. Roadmap pasca-MVP
@@ -770,7 +789,8 @@ Tiket ≤ 4 jam per hari, pemilik, dependensi, DoD, dan perbandingan dengan kapa
 | Fase | Fokus | Isi |
 | --- | --- | --- |
 | 1 — Uji coba (Des 2026 – Feb 2027) | Validasi nyata | Percontohan 1 kelurahan di DKI dengan 2–3 komunitas; metrik §10 dengan data nyata |
-| 2 — Penguatan | Kepercayaan & keselamatan | Pendaftaran mandiri relawan + verifikasi, reputasi, blur otomatis di perangkat, PWA offline, cookie HttpOnly |
+| 2 — Penguatan | Kepercayaan & keselamatan | Pendaftaran mandiri relawan + verifikasi, reputasi, blur otomatis di perangkat, antrean laporan offline di aplikasi, notifikasi push, cookie HttpOnly di web |
+| 2b — Distribusi | Toko aplikasi | Rilis Play Store & App Store (TestFlight) setelah uji coba |
 | 3 — Mobilitas | Moda | Rekomendasi moda untuk umum dengan data terbuka; angkutan real-time bila ada sumber resmi |
 | 4 — Kelembagaan | Instansi | Dasbor kelurahan; penjajakan integrasi resmi bila ada API & izin |
 
@@ -787,5 +807,9 @@ Tiket ≤ 4 jam per hari, pemilik, dependensi, DoD, dan perbandingan dengan kapa
 - [ ] Rumus biaya perkiraan S02 dan sumbernya [PERLU DATA].
 - [ ] Siapa moderator di dunia nyata (hasil wawancara).
 - [ ] Email kontak tim untuk halaman Tentang AI.
+- [ ] **Ketentuan cabang Mobile App Development** di guidebook: wajib APK? boleh backend lewat Cloudflare Tunnel padahal aturan "berjalan di localhost"? (PM → panitia) [PERLU DIVERIFIKASI]
+- [ ] **iOS:** ada Mac atau akun Apple Developer untuk development build iOS? Tanpa itu iOS tidak bisa dipasang di iPhone (MapLibre RN tidak jalan di Expo Go) [PERLU DIVERIFIKASI di PRE-15].
+- [ ] Domain Cloudflare milik tim (nama domain) untuk tunnel.
+- [ ] Dukungan PMTiles di MapLibre RN 11.3.8 dan build iOS (PRE-15). Versi Expo/MapLibre sudah pasti dari app SmartRoute.
 
 **Asumsi aktif** [ASUMSI]: target validasi 5 wawancara/30 responden; masa berlaku hambatan default 24 jam/7 hari; rate limit 10/15 menit login, 10/menit AI; token 8 jam di `localStorage`; polling triase 2 dtk maks 15 dtk; retensi foto ditolak 30 hari; PostGIS tidak dipakai; set uji AI 40 kasus; `PILOT_BOUNDS` `106.68,-6.38,106.98,-6.08`; token file lewat `?token=` untuk MVP lokal; jam kerja efektif per hari di TICKETS.md §0.

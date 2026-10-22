@@ -1,6 +1,6 @@
 # SDD SUSI Connect — Software Design Document
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 2.2 · **Sumber kebenaran teknis** (fitur: [PRD.md](PRD.md))
+**Tanggal:** 22 Oktober 2026 · **Versi:** 3.3 · **Sumber kebenaran teknis** (fitur: [PRD.md](PRD.md))
 **Dokumen terkait:** [API.md](API.md) · [AI-PROMPTS.md](AI-PROMPTS.md) · [UI-SPEC.md](UI-SPEC.md) · [TICKETS.md](TICKETS.md) · [`db/migrations/`](../db/migrations)
 
 ## Log Perubahan
@@ -11,6 +11,10 @@
 | 2.0 | 22 Okt 2026 | **Struktur:** dua repo → **monorepo** `susi-connect` (`backend/`, `web/`, `db/`, `docs/`); migrasi pindah dari `backend/src/db/migrations/` ke `db/migrations/` di root. **Skema:** ALTER di §7 v1 digabung ke file migrasi 001–005 final; tambah `areas`, `report_categories`, `users.is_demo`, `reports.reject_reason`, `matches.status='kedaluwarsa'`, `tasks.needs_route`, `actions.match_id`, `road_obstacles.source_role`, `notifications.title/body`. **Konfigurasi DB:** `pool.js` repo lama memakai `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME`, SDD v1 menulis `DATABASE_URL` → dipilih **`DATABASE_URL`** dan `pool.js` diubah (§2.2). **State machine:** digabung dari PRD v1 §10 dan SDD v1 §6.1 — `forward` boleh dari `menunggu` **dan** `diverifikasi`; ditambah event `return` dan `reopen` yang ada di PRD tetapi hilang di SDD v1; pembatalan aksi kembali ke `diverifikasi` oleh sistem (bukan koordinator). **API:** dipindah ke API.md; `GET /routes` (bukan POST); `source` rute `ors/cache/straight`; JSON snake_case. **Peta:** SDD v1 menyebut `MapClusterLayer` dengan warna per status — komponen itu hanya punya satu `pointColor` (map.tsx baris 1885–1911), jadi peta kerja memakai `MapMarker` per laporan dan `MapClusterLayer` hanya untuk peta publik (§8.6). **Wilayah:** pilot = Provinsi DKI Jakarta (daratan), kecamatan demo utama Tebet [ASUMSI]. **Kepemilikan:** `matching.service`, `metrics.service`, upload/foto, geo/hambatan, match API, notifikasi, komunitas/kanal/admin API ditulis DA, direview BE (TICKETS.md §0). **Izin panitia:** pemakaian kode repo lama sudah diizinkan (jawaban tim 22 Okt). |
 | 2.1 | 22 Okt 2026 | Atas permintaan tim, frontend **mempertahankan tampilan & layout smartroute-dashboard**: tema gelap (`dark-1/2`, `light-1/2`, `red-1`, `green-1`), font Plus Jakarta Sans + Source Code Pro, layout `Dashboard.tsx` (KPI + grid kartu) dan peta layar penuh `Map.tsx` dengan panel mengambang & modal. Halaman/komponen lama kini **diubah**, bukan dihapus (§2.3); komponen turunan baru di §8.4; `MapWorkspace` multi-mode di §8.5–8.6; gaya §8.7 diganti. Temuan baru T13: font dari Google Fonts (gagal offline). |
 | 2.2 | 22 Okt 2026 | Hasil audit: (1) T14 — build web gagal karena `baseUrl` (TS 6); (2) `file-type` ESM-only → cek magic bytes sendiri (§6.7); (3) `?token=` hanya untuk `/files/*` (§5.2); (4) kunci `route_cache` memakai geometri hambatan, bukan id — sebelumnya cache gladi tidak pernah kena saat hambatan dibuat ulang di demo (§6.5, §10.3); (5) K1 menambah `breakdown` untuk `StatusSummaryCard`/`ActionsStatusCard` yang sebelumnya tidak punya sumber data (§6.6, §8.1); (6) data buatan akun sintetis ikut `is_synthetic` (§6.9). |
+| 3.0 | 22 Okt 2026 | Klien **mobile Expo/React Native** (D16–D20): `mobile/` + `shared/` di monorepo (§4.1), arsitektur dengan Cloudflare Tunnel & cadangan hotspot (§3), bagian baru §8A (stack, pemetaan layar, klien API, navigasi, peta MapLibre RN, jaringan, build). Web dirampingkan (D18). `WEB_ORIGIN` boleh daftar. Cakupan commit `mobile`, `shared`. |
+| 3.1 | 22 Okt 2026 | Sistem desain dipindah ke DESIGN.md: tema gelap/terang mengikuti sistem, token semantik `surface/ink`, `.dark` otomatis (shadcn ikut), peta tidak lagi dipaksa gelap (§8.6, §8.7). |
+| 3.2 | 22 Okt 2026 | Audit smartroute-app (AUDIT-SMARTROUTE-APP.md): `mobile/` dibuat dari `smartroute/` lewat git subtree lalu dipangkas; versi stack mobile kini pasti (Expo ~57, RN 0.86.3, MapLibre RN 11.3.8, NativeWind 4.2.6 + Tailwind 3.4, expo-dev-client, EAS); struktur `mobile/src/app`; ikon `@expo/vector-icons`; desain mobile ikut app SmartRoute. |
+| 3.3 | 22 Okt 2026 | Penyelarasan dengan audit: struktur `mobile/src` mengikuti app SmartRoute (servis di `src/services`, `apiConfig.ts` diperluas menggantikan `network.ts`), env `EXPO_PUBLIC_API_BASE_URL` (nama dari app SmartRoute), peta memakai API MapLibre RN v11 (`Map`, `Marker`, `GeoJSONSource`) & style OpenFreeMap, build lewat EAS cloud. |
 
 ---
 
@@ -32,6 +36,11 @@
 | D12 | Offline | `AI_MODE`, `ROUTING_MODE`, `VITE_MAP_STYLE=offline` (PMTiles DKI). | Grand Final di localhost tanpa jaminan internet. |
 | D13 | Wilayah | `PILOT_BOUNDS` = DKI Jakarta daratan; `areas` berisi kelurahan; moderator/instansi per kecamatan. | Jawaban tim. |
 | D14 | Uji | `node:test` (unit) + `supertest` (API) + gladi manual. | Tanpa dependensi uji berat. |
+| D16 | Klien mobile | Expo + React Native + TypeScript di `mobile/` (basis app SmartRoute: expo-router, NativeWind dengan token app SmartRoute — DESIGN §7), Android + iOS, semua peran kecuali admin. | Cabang lomba Mobile App Development; satu bahasa dengan web. |
+| D17 | Kode bersama | `shared/` berisi `types.ts`, `labels.ts`, `validation.ts` (aturan field UI) — dipakai web & mobile lewat alias `@shared/*`. | Satu sumber tipe & teks. |
+| D18 | Web dirampingkan | Web hanya S01, S02, S06, S07, S14, S15, S17. | Kapasitas; peran lapangan pakai HP. |
+| D19 | Peta mobile | `@maplibre/maplibre-react-native` 11.3.8 (API v11) + development build lewat EAS; bukan Expo Go. | Satu teknologi peta dengan web, bisa offline. |
+| D20 | Jaringan | Backend tetap di laptop (`localhost:5000`), diekspos `cloudflared` named tunnel ke `https://api.<domain>`; mobile fallback ke `http://<IP-hotspot>:5000`. | HP butuh alamat yang bisa dijangkau; tetap jalan tanpa internet. |
 | D15 | Upload | multer memory → `sharp` re-encode WebP 1280 px (EXIF hilang) → disk `UPLOAD_DIR`. | Privasi foto. |
 
 ---
@@ -47,7 +56,7 @@ Kedua repo diperiksa langsung (commit terakhir: backend `fecdbc0 feat: auth`, fr
 | T1 | Semua route tanpa autentikasi; `POST /api/admins` terbuka | `backend/src/routes/adminRoutes.js`, `index.js` | Hapus route admin lama; `requireAuth`/`requireRole` di semua route non-publik | BE-03 |
 | T2 | `JWT_SECRET` fallback `"secretkey_smartroute"` | `adminController.js` (fungsi `loginAdmin`) | `config/env.js` menolak start bila kosong/< 32 karakter | BE-02 |
 | T3 | Worker MapLibre dari `unpkg.com`; basemap Carto & OpenFreeMap | `web/src/components/ui/map.tsx` baris 25–34; `Map3DToggle.tsx` | Worker lokal + basemap PMTiles (§10) | FS-10, FS-11 |
-| T4 | Peta disembunyikan di layar < `md` (`hidden md:block`) | `web/src/pages/Map.tsx` baris 41, 112 | `Map.tsx` menjadi `MapWorkspace` responsif: di < `md` panel mengambang berubah jadi *bottom sheet* bertab, modal jadi layar penuh; pesan "Buka website di desktop…" dihapus | FS-33 |
+| T4 | Peta disembunyikan di layar < `md` (`hidden md:block`) | `web/src/pages/Map.tsx` baris 41, 112 | `Map.tsx` menjadi `MapWorkspace` responsif: di < `md` panel mengambang berubah jadi *bottom sheet* bertab, modal jadi layar penuh; pesan "Buka website di desktop…" dihapus | FS-21 |
 | T5 | `FlagProvider` dibungkus dua kali | `main.tsx` dan `App.tsx` | Hapus keduanya (FlagContext dihapus) | FS-01 |
 | T6 | URL API ditulis langsung | `services/api.ts` (`http://localhost:5000/api`), `Login.tsx` | `VITE_API_URL` di `lib/apiClient.ts` | FS-02 |
 | T7 | Respons admin `{message, token}` beda envelope | `adminController.js` | Semua lewat `lib/respond.js` | BE-01 |
@@ -154,9 +163,19 @@ flowchart LR
   SVC -->|directions + avoid_polygons| ORS
   MAPC -->|VITE_MAP_STYLE=online| CARTO
   MAPC -->|VITE_MAP_STYLE=offline| BASE
+  subgraph MOB[mobile/ — Expo React Native, Android + iOS]
+    SCR[Layar per peran (tab bawah)]
+    MLRN[MapLibre RN]
+    SS[(SecureStore token)]
+  end
+  CF[Cloudflare Tunnel<br/>https://api.&lt;domain&gt;]
+  HOT[Hotspot laptop<br/>http://IP:5000]
+  SCR -->|utama| CF --> MW
+  SCR -.->|cadangan offline| HOT -.-> MW
+  MLRN -->|online| CARTO
 ```
 
-Browser hanya memanggil backend; Gemini dan ORS dipanggil dari service sehingga kunci API tidak sampai ke browser. Satu-satunya akses eksternal dari browser adalah basemap online, yang punya pengganti lokal.
+Browser dan aplikasi mobile hanya memanggil backend (mobile lewat Cloudflare Tunnel, cadangan IP hotspot); Gemini dan ORS dipanggil dari service sehingga kunci API tidak sampai ke browser. Satu-satunya akses eksternal dari browser adalah basemap online, yang punya pengganti lokal.
 
 ---
 
@@ -204,6 +223,30 @@ susi-connect/
 
 ---
 
+### 4.1 Tambahan monorepo untuk mobile
+
+```text
+susi-connect/
+  shared/                       # dipakai web & mobile (tanpa dependensi React/RN)
+    types.ts  labels.ts  validation.ts
+  mobile/                       # dari smartroute/ (git subtree), dipangkas — AUDIT-SMARTROUTE-APP.md §4
+    app.json  eas.json  package.json  tailwind.config.js  global.css  metro.config.js  .env.example
+    src/app/                    # expo-router (struktur app SmartRoute: src/app, src/components, src/services, src/utils)
+      _layout.tsx               # (app SmartRoute) font, splash, tema navigator biru malam + AuthProvider, FallbackBanner
+      login.tsx  settings.tsx   # M-S01, M-S19 (baru)
+      (tabs)/_layout.tsx        # CustomTabBar (app SmartRoute) dengan tab per persona (UI-SPEC M0)
+      (tabs)/index.tsx          # M-S02 peta (dari crowd-map.tsx)
+      (tabs)/lapor.tsx  (tabs)/laporan.tsx  (tabs)/aksi.tsx  (tabs)/moderasi.tsx  (tabs)/rekomendasi.tsx
+      laporan/[id].tsx  aksi/[id].tsx  aksi/baru.tsx  rujukan/[id].tsx  hambatan.tsx  dampak.tsx  notifikasi.tsx
+      bantuan.tsx  tentang-ai.tsx   # bantuan = turunan assistant.tsx
+    src/services/apiConfig.ts   # (app SmartRoute, diubah) dua URL + health check → pengganti network.ts
+    src/services/apiClient.ts   # baru, memakai utils/withTimeout.ts (app SmartRoute)
+    src/context/AuthContext.tsx  src/hooks/*  src/components/*  src/utils/currentLocation.ts (app SmartRoute)
+    assets/fonts/  assets/basemap/   # font Plus Jakarta Sans (app SmartRoute); style offline + (bila didukung) dki.pmtiles
+```
+
+`web/` dan `mobile/` mengimpor `shared/` lewat alias `@shared/*` (Vite `resolve.alias`; Metro `watchFolders` + `extraNodeModules` / Babel module-resolver) [PERLU DIVERIFIKASI konfigurasi Metro untuk folder di luar proyek pada versi Expo yang dipakai].
+
 ## 5. Desain backend
 
 ### 5.1 Urutan request & aturan lapisan
@@ -225,7 +268,7 @@ const schema = z.object({
   PORT: z.coerce.number().default(5000),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET minimal 32 karakter'),
-  WEB_ORIGIN: z.string().url(),
+  WEB_ORIGIN: z.string().transform((s) => s.split(',').map((x) => x.trim())), // mis. http://localhost:5173,https://app.<domain>; klien mobile native tidak terkena CORS
   UPLOAD_DIR: z.string().default('./uploads'),
   AI_MODE: z.enum(['live', 'fallback']).default('live'),
   GEMINI_API_KEY: z.string().optional(),
@@ -1216,7 +1259,7 @@ interface ProtectedRouteProps { roles?: GlobalRole[]; communityRole?: MemberRole
 
 ### 8.6 Peta
 
-- `BaseMap` = `Map3DToggle` lama yang diparametrisasi: `styles` = `offlineStyle` bila `VITE_MAP_STYLE=offline`, style 3D OpenFreeMap bila mode 3D, selain itu default Carto (prop `styles` mengalahkan default, map.tsx baris 187–190); `center`/`maxBounds` dari `VITE_MAP_CENTER`/`VITE_MAP_BOUNDS` (DKI), `minZoom 10`; tombol "Mode 3D" hanya bila `allow3D` dan online. `theme="dark"` dipaksa agar cocok dengan tema lama.
+- `BaseMap` = `Map3DToggle` lama yang diparametrisasi: `styles` = `offlineStyle` bila `VITE_MAP_STYLE=offline`, style 3D OpenFreeMap bila mode 3D, selain itu default Carto (prop `styles` mengalahkan default, map.tsx baris 187–190); `center`/`maxBounds` dari `VITE_MAP_CENTER`/`VITE_MAP_BOUNDS` (DKI), `minZoom 10`; tombol "Mode 3D" hanya bila `allow3D` dan online. tema peta **mengikuti kelas `.dark` dokumen** (gelap/terang sesuai sistem, DESIGN §8.2) — tidak dipaksa gelap.
 - **`MapWorkspace`** (pages/Map.tsx lama): peta layar penuh + `ViewToggle` (kanan atas), `DigitalClock` (tengah atas, ≥ `lg`), `ObstaclePanel` (kiri atas, dari FlaggedStationsPanel), `QueuePanel` (kanan atas di bawah ViewToggle, dari Leaderboard), `ReportDetailModal` (dari StationDetail), `MapControls`, `LogoutButton`. Isi per `mode`: `publik` — cluster laporan publik + kartu dampak ringkas di `QueuePanel`; `warga` — laporan sendiri + tombol "Laporkan masalah"; `moderasi` — antrian `menunggu` di `QueuePanel`, modal berisi `TriagePanel` + Verifikasi/Teruskan/Tolak; `rekomendasi` — match komunitas di `QueuePanel`, modal berisi `ScoreBreakdown` + Terima/Tolak; `hambatan` — `ObstaclePanel` terbuka, klik peta membuka `ObstacleForm` di modal.
 - **Layar kecil (< `md`)**: kedua panel menjadi satu *bottom sheet* bertab (40% tinggi layar), modal layar penuh, `ViewToggle` jadi bar bawah, `DigitalClock` disembunyikan. Pesan lama "Buka website di desktop…" dihapus.
 - **Marker laporan** (`ReportMarker`): marker berdenyut lama dipertahankan (`motion` + glow), warna = urgensi (`getHeatmapColor` → `urgencyColor`: rendah `green-1`, sedang `yellow-1`, tinggi `orange-1`, darurat `red-1`), **bentuk** = status (lingkaran menunggu, cincin diverifikasi/dikoordinasikan, kotak diteruskan, centang selesai) agar tidak bergantung warna; `MarkerTooltip` = judul; `MarkerPopup` = kategori, status, kelurahan + tombol lama "Lihat Lengkap →" yang membuka `ReportDetailModal`. `prefers-reduced-motion` mematikan denyut. Titik demo < 50, jadi tanpa cluster.
@@ -1225,6 +1268,8 @@ interface ProtectedRouteProps { roles?: GlobalRole[]; communityRole?: MemberRole
 - **Rute:** `MapRoute coordinates={geometry.coordinates} color={source==='straight' ? abu-abu : utama} width={4}`; label "perkiraan" + lencana `source`.
 
 ### 8.7 Gaya
+
+> **Digantikan oleh [DESIGN.md](DESIGN.md) v1.0.** Tema kini mengikuti sistem (gelap/terang); kelas `dark-1/2`, `light-1/2` diganti token semantik `surface`, `surface-2`, `ink`, `ink-2` yang nilainya di mode gelap sama persis dengan token lama; `class="dark"` dipasang/dilepas otomatis di `<html>`. Isi di bawah tetap berlaku sebagai catatan asal-usul token.
 
 Bahasa visual **smartroute-dashboard dipertahankan**: latar `bg-dark-1`, kartu `bg-dark-1 border border-light-1/25 rounded-xl`, tombol sekunder `bg-dark-2 border-light-1/15`, teks utama `text-light-1`, teks sekunder `text-light-2`, angka & label `font-mono` (Source Code Pro), judul `font-sans` (Plus Jakarta Sans), animasi masuk `motion` (`opacity`/`y`), panel lipat dengan `RiArrowDropDownLine`, ikon `react-icons/ri`.
 
@@ -1258,6 +1303,77 @@ Token tambahan di blok `@theme` yang sama (nilai oklch [ASUMSI], kontras dicek d
 `light-2` di atas `dark-1` hanya untuk teks ≥ 14 px; teks isi memakai `light-1`. Warna status selalu disertai ikon + teks.
 
 ---
+
+## 8A. Aplikasi mobile (Expo)
+
+### 8A.1 Stack
+
+| Kebutuhan | Paket | Catatan |
+| --- | --- | --- |
+| Kerangka | Expo SDK ~57 + `expo-router` ~57 + React Native 0.86.3 + React 19.2.3 | dari `smartroute/package.json` (sudah dipakai & di-build lewat EAS) |
+| Gaya | NativeWind 4.2.6 + Tailwind 3.4 (`tailwind.config.js`, `global.css`, `metro.config.js withNativeWind`) | token & resep: DESIGN §7 (gaya app SmartRoute) |
+| Peta | `@maplibre/maplibre-react-native` 11.3.8 — API v11: `Map`, `Camera`, `Marker`, `GeoJSONSource` (+ clustering) | sudah dipakai di `smartroute/src/components/*/…native.tsx`; development build + config plugin di `app.json` |
+| Lokasi | `expo-location` | izin "saat aplikasi dipakai" |
+| Kamera/galeri | `expo-image-picker` | foto laporan & bukti |
+| Kompres foto | `expo-image-manipulator` | sisi panjang ≤ 1280 px sebelum unggah; EXIF tetap dibuang server |
+| Token | `expo-secure-store` | bukan AsyncStorage |
+| Pengaturan URL | `@react-native-async-storage/async-storage` | URL backend pilihan pengguna |
+| Salin draf | `expo-clipboard` | M-S12 |
+| Font | `assets/fonts/PlusJakartaSans-VariableFont_wght.ttf` dimuat `useFonts` (dari app SmartRoute) | di-bundle, offline |
+| Ikon | `@expo/vector-icons` (Ionicons, MaterialCommunityIcons) | dari app SmartRoute |
+| Build | EAS Build cloud (profil `development`, `preview`, `production` di `eas.json` — sudah terbukti menghasilkan APK untuk app SmartRoute); iOS butuh akun Apple | PRE-15, MB-23 |
+
+### 8A.2 Pemetaan layar web → mobile
+
+| Layar UI-SPEC | Mobile | Web | Komponen web yang ditiru gayanya |
+| --- | --- | --- | --- |
+| S01 Masuk | M-S01 | ✓ | Login.tsx |
+| S02 Peta | M-S02 (tab "Peta") | ✓ (publik) | Map.tsx, marker berdenyut |
+| S03 Lapor | M-S03A/B | — | — |
+| S04/S05 Laporan saya & detail | M-S04, M-S05 | — | StationDetail (modal → layar) |
+| S06 Moderasi | M-S06 | ✓ | Leaderboard (antrian) |
+| S07 Verifikasi bukti | bagian M-S06 | ✓ | — |
+| S08 Rekomendasi | M-S08 | — | Leaderboard |
+| S09–S11 Aksi | M-S09–M-S11 | — | — |
+| S12 Rujukan | M-S12 | — (moderator menyalin draf di S06 web) | — |
+| S13 Hambatan | M-S13 | — | FlaggedStationsPanel |
+| S14 Dampak | M-S14 (ringkas) | ✓ (lengkap) | Dashboard.tsx, KpiCard |
+| S15 Tentang AI | M-S15 | ✓ | — |
+| S16 Notifikasi | M-S16 | — | — |
+| S17 Admin | — | ✓ | — |
+| S18 Chatbot | M-S18 | — | — |
+| — | M-S19 Pengaturan server | — | — |
+
+### 8A.3 Kode bersama & klien API
+
+- `shared/types.ts` = isi SDD §8.1 (pindah dari `web/src/lib/types.ts`); `shared/labels.ts` = PRD §8; `shared/validation.ts` = batas field UI-SPEC (min/maks karakter, ukuran foto) agar web & mobile sama.
+- `mobile/src/services/apiClient.ts` = antarmuka sama dengan web (`api<T>(path, opts)`), dibangun di atas `fetchWithTimeout` (`src/utils/withTimeout.ts` dari app SmartRoute); token dari `SecureStore`; base URL dari `apiConfig.ts`; upload memakai `FormData` dengan `{ uri, name, type }`. Pola servis per domain mengikuti app SmartRoute (`src/services/reportService.ts`, `actionService.ts`, …).
+- Foto (`/files/*`) dimuat dengan `<Image source={{ uri, headers: { Authorization } }}>`; mobile **tidak** memakai `?token=`.
+
+### 8A.4 Navigasi & guard
+
+Tab bawah per persona (UI-SPEC M0); layar di luar tab dibuka dengan push. Guard = komponen `RequireAuth roles/communityRole` yang sama logikanya dengan `ProtectedRoute` web. Persona admin yang masuk ke aplikasi mendapat pesan "Panel admin tersedia di web".
+
+### 8A.5 Peta mobile
+
+- Komponen `MapView` SUSI diturunkan dari `CrowdMapView.native.tsx`, `AllStopsMapView.native.tsx`, `NavigateMap.native.tsx` app SmartRoute — API MapLibre RN **v11**: `Map` (prop `mapStyle`), `Camera`/`InitialViewState` (fit bounds + padding), `Marker` (view kustom), `GeoJSONSource` (+ clustering GPU) dengan layer garis/isi.
+- Style online: OpenFreeMap (gratis, tanpa API key) seperti app SmartRoute; varian terang sesuai DESIGN §8.3 [ASUMSI nama style `https://tiles.openfreemap.org/styles/positron` atau `liberty`, PERLU DIVERIFIKASI]. Style lokal saat `EXPO_PUBLIC_MAP_STYLE=offline` atau jaringan cadangan aktif.
+- Marker laporan = `Marker` dengan `View` bulat warna urgensi + bentuk status; hambatan = `GeoJSONSource` (poligon `obstacle.polygon`) + layer isi transparan; rute = `GeoJSONSource` (`geometry`) + layer garis `brand-blue`.
+- Offline: dukungan sumber `pmtiles://` di MapLibre RN 11.3.8 belum terbukti [PERLU DIVERIFIKASI di PRE-15]; rencana B = style polos + GeoJSON batas kecamatan dari `assets/basemap/`.
+
+### 8A.6 Jaringan (Cloudflare + hotspot)
+
+1. `src/services/apiConfig.ts` (milik app SmartRoute, diperluas) menyimpan dua URL dasar tanpa `/api`: `EXPO_PUBLIC_API_BASE_URL` (`https://api.<domain>` — nama variabel sama dengan app SmartRoute) dan `EXPO_PUBLIC_API_FALLBACK_URL` (`http://<IP-hotspot>:5000`; `apiClient` menambahkan `/api`; IP laptop di hotspot Windows biasanya `192.168.137.1` [PERLU DIVERIFIKASI di laptop demo]).
+2. Saat start dan tiap 30 dtk: `GET /health` ke URL aktif (timeout 3 dtk). Gagal 2× berturut-turut → pindah ke URL lain, tampilkan banner "Terhubung lewat hotspot laptop (tanpa internet)".
+3. Layar Pengaturan (M-S19) menampilkan URL aktif, status, tombol "Uji koneksi", dan isian URL manual.
+4. Android memblokir HTTP tanpa TLS secara bawaan: `usesCleartextTraffic: true` lewat `expo-build-properties` **sudah ada** di `app.json` app SmartRoute; iOS butuh pengecualian ATS untuk IP lokal.
+5. Backend: `cloudflared tunnel run susi` mengarah ke `http://localhost:5000`; Express `app.set('trust proxy', 1)` agar rate limit membaca IP asli dari header Cloudflare.
+
+### 8A.7 Build & distribusi
+
+- Android: **EAS Build cloud** seperti app SmartRoute (`eas build -p android --profile development` untuk dev client, `--profile preview` untuk APK internal/submission) — tidak butuh Android SDK lokal (`task/Task_App_04_EAS_Build_Verification.md`). Proyek EAS baru atas nama tim SUSI. Ketentuan APK untuk submission [PERLU DIVERIFIKASI].
+- iOS: development build lewat EAS (butuh akun Apple Developer) atau Mac + Xcode. Bila tidak tersedia, iOS dinyatakan "kode siap, belum diuji di perangkat" (R15).
+- Uji: tidak ada uji UI otomatis mobile di MVP; `tsc --noEmit` + ESLint di CI; uji manual GWT di MB-24.
 
 ## 9. Keamanan & privasi
 
@@ -1362,8 +1478,8 @@ npm run dev        # http://localhost:5173
 | Aspek | Aturan |
 | --- | --- |
 | Branch utama | `main` — selalu bisa dijalankan; proteksi: wajib PR, CI hijau, 1 review |
-| Nama branch | `<jenis>/<ID-tiket>-<slug>`; jenis `feat`, `fix`, `docs`, `chore`, `test`, `refactor`. Contoh: `feat/BE-11-report-verify`, `fix/FS-17-route-panel-mobile` |
-| Format commit | Conventional Commits: `<jenis>(<cakupan>): <ringkas, bahasa Indonesia> (<ID>)`. Cakupan: `api`, `db`, `ai`, `web`, `map`, `seed`, `docs`, `ci`. Contoh: `feat(api): verifikasi laporan + matching (BE-11)` |
+| Nama branch | `<jenis>/<ID-tiket>-<slug>`; jenis `feat`, `fix`, `docs`, `chore`, `test`, `refactor`. Contoh: `feat/BE-11-report-verify`, `fix/MB-15-route-panel` |
+| Format commit | Conventional Commits: `<jenis>(<cakupan>): <ringkas, bahasa Indonesia> (<ID>)`. Cakupan: `api`, `db`, `ai`, `web`, `mobile`, `shared`, `map`, `seed`, `docs`, `ci`. Contoh: `feat(api): verifikasi laporan + matching (BE-11)` |
 | Ukuran PR | ≤ 1 tiket, idealnya < 400 baris berubah; deskripsi memuat ID tiket, cara uji, tangkapan layar untuk UI |
 | Review | BE ↔ FS saling review; DA → direview BE; PM mereview teks UI & dokumen. Maks 2 jam menunggu review; lewat itu boleh self-merge dengan catatan di PR (hanya bila CI hijau) |
 | Merge | **Squash merge**; hapus branch setelah merge; rebase pada `main` sebelum merge bila konflik |
