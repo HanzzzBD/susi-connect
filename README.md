@@ -13,6 +13,7 @@ LOGICODIX 2026 · cabang **Mobile App Development** · Subtema 5 Civic Tech & Co
 | [`mobile/`](mobile/) | Aplikasi utama untuk warga, relawan, koordinator, moderator, instansi | Expo SDK 57, React Native 0.86, expo-router, NativeWind, MapLibre RN 11 |
 | [`web/`](web/) | Web pendamping: peta publik, moderasi, dashboard dampak, admin | React 19, TypeScript, Vite, Tailwind v4, shadcn, MapLibre (mapcn) |
 | [`backend/`](backend/) | REST API, triase AI (Gemini), matching, rute (OpenRouteService) | Node.js, Express 4, PostgreSQL (`pg`), zod |
+| [`mobility/`](mobility/) | Layanan rekomendasi moda untuk umum (mesin rute SmartRoute) | Express 5 + TypeScript, OpenTripPlanner 2 (Docker) |
 | [`db/migrations/`](db/migrations/) | Skema PostgreSQL SUSI (001–005) | SQL |
 | [`docs/`](docs/) | PRD, SDD, API, UI-SPEC, DESIGN, AI-PROMPTS, TICKETS, TASKS, DEMO-SCRIPT, audit | Markdown |
 
@@ -40,6 +41,8 @@ Kode dasar berasal dari proyek tim sebelumnya, SmartRoute AI, yang belum pernah 
 | `web/` | [inouerakan/smartroute-dashboard](https://github.com/inouerakan/smartroute-dashboard) `main` | `b1787c9` |
 | `backend/` | [inouerakan/smartroute-backend](https://github.com/inouerakan/smartroute-backend) `main` | `fecdbc0` |
 | `mobile/` | folder `smartroute/` di [lippbyte/smartroute-app](https://github.com/lippbyte/smartroute-app) | split `351cfcb` (repo `0a92f40`) |
+| `mobility/backend-skeleton/` | `backend/backend-skeleton/` di lippbyte/smartroute-app | split `44460b7` |
+| `mobility/otp2-setup/` | `backend/otp2-setup/` di lippbyte/smartroute-app | split `ba967cb` |
 
 Perubahan sejak impor: `web/tsconfig*.json` — `baseUrl` dihapus agar build TypeScript 6 lolos (SDD §2.1 T14). `mobile/LICENSE` adalah lisensi MIT bawaan templat Expo.
 
