@@ -1,6 +1,6 @@
 # API SUSI Connect — Kontrak Endpoint
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 1.0 · **Status:** siap dipakai untuk tiket BE/FS
+**Tanggal:** 22 Oktober 2026 · **Versi:** 1.1 · **Status:** siap dipakai untuk tiket BE/FS
 **Dirujuk dari:** [SDD.md](SDD.md) §5 · **Skema DB:** [`db/migrations/`](../db/migrations)
 
 ## Log Perubahan
@@ -8,6 +8,7 @@
 | Versi | Tanggal | Perubahan |
 | --- | --- | --- |
 | 1.0 | 22 Okt 2026 | Dokumen baru. Menggantikan tabel endpoint PRD v1 §14 dan aturan SDD v1 §5. Perbaikan inkonsistensi: (1) `POST /routes` (PRD) → `GET /routes` (SDD), dipilih **GET** karena idempoten dan bisa di-cache; (2) nilai `source` rute `live` (PRD) → `ors` (SDD), dipilih **`ors`**; (3) `PATCH /actions/:id/status` dan `DELETE /obstacles/:id` diganti endpoint aksi bernama (`/start`, `/submit`, `/cancel`, `/revoke`) sesuai aturan SDD; (4) `POST /auth/demo-login {role}` → `{email}` karena peran kini dua tingkat; (5) chatbot FAQ menjadi `POST /chat/faq` stateless, sesi chat hanya untuk mode lapor; (6) seluruh JSON memakai **snake_case** seperti baris PostgreSQL di repo lama (SDD v1 memakai camelCase di respons rute); (7) envelope galat memakai `error.code` (repo lama memakai `message` di tingkat atas). |
+| 1.1 | 22 Okt 2026 | Hasil audit: R3 `status` menerima beberapa nilai (filter "Dalam penanganan" di S02 butuh 3 status); K1 menambah `breakdown` (hitungan laporan & aksi per status, tugas terbuka) untuk kartu dashboard; `?token=` dibatasi ke `/files/*`. |
 
 ---
 
@@ -403,7 +404,8 @@ GET /api/reports?status=menunggu&page=1&limit=20
 ```js
 const query = z.object({
   bbox: z.string().regex(/^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}$/, 'bbox = minLng,minLat,maxLng,maxLat').optional(),
-  status: z.enum(['menunggu', 'diverifikasi', 'dikoordinasikan', 'diteruskan_instansi', 'selesai']).optional(),
+  // satu atau beberapa status dipisah koma, mis. ?status=diverifikasi,dikoordinasikan,diteruskan_instansi
+  status: z.string().transform((s) => s.split(',')).pipe(z.array(z.enum(['menunggu', 'diverifikasi', 'dikoordinasikan', 'diteruskan_instansi', 'selesai'])).min(1)).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(500),
 });
 ```
@@ -1119,10 +1121,13 @@ const query = z.object({
   "is_synthetic_share": 1.0,
   "metrics": [
     { "key": "reports_total", "label": "Laporan masuk", "value": 12, "unit": "laporan", "formula": "Jumlah laporan pada rentang waktu" },
-    { "key": "resolution_rate", "label": "Tingkat penyelesaian", "value": 0.42, "unit": "rasio", "formula": "Laporan selesai ÷ (laporan masuk − ditolak)" } ] } }
+    { "key": "resolution_rate", "label": "Tingkat penyelesaian", "value": 0.42, "unit": "rasio", "formula": "Laporan selesai ÷ (laporan masuk − ditolak)" } ],
+  "breakdown": { "reports_by_status": { "menunggu": 3, "diverifikasi": 2, "dikoordinasikan": 3, "diteruskan_instansi": 1, "selesai": 4, "ditolak": 1 },
+                 "actions_by_status": { "direncanakan": 1, "berjalan": 1, "menunggu_verifikasi": 1, "terverifikasi": 4, "dibatalkan": 0 },
+                 "open_tasks": 4 } } }
 ```
 
-Daftar `key` lengkap dan SQL-nya: SDD §6.6. **Galat:** 400; 403 `FORBIDDEN_COMMUNITY`.
+`breakdown` selalu dikirim (juga ke publik: hanya hitungan) untuk kartu dashboard. Daftar `key` lengkap dan SQL-nya: SDD §6.6. **Galat:** 400; 403 `FORBIDDEN_COMMUNITY`.
 
 ---
 
@@ -1249,7 +1254,7 @@ Frontend memakai `ai_mode`/`routing_mode` untuk banner "Mode cadangan".
 
 ### Z2 `GET /files/report-photos/:id` · `GET /files/evidences/:id`
 
-- Token boleh lewat header **atau** `?token=` (karena `<img>` tidak bisa mengirim header) [ASUMSI; token di URL hanya untuk localhost MVP].
+- Token boleh lewat header **atau** `?token=` (karena `<img>` tidak bisa mengirim header). `?token=` **hanya** diterima di `/files/*`; endpoint lain menolaknya (401) [ASUMSI: cukup untuk localhost MVP].
 - Hak: sama dengan R4 (foto laporan) / X3 (bukti). Respons: `image/webp`, `Cache-Control: private, max-age=3600`.
 - **Galat:** 401; 404.
 

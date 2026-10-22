@@ -1,6 +1,6 @@
 # TICKETS SUSI Connect — Rencana Kerja per Hari
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 1.1 · **Pemilik:** PM
+**Tanggal:** 22 Oktober 2026 · **Versi:** 1.2 · **Pemilik:** PM
 **Dirujuk dari:** PRD §17 · DoD umum: SDD §11 · Strategi git: SDD §12
 
 ## Log Perubahan
@@ -8,7 +8,8 @@
 | Versi | Tanggal | Perubahan |
 | --- | --- | --- |
 | 1.0 | 22 Okt 2026 | Dokumen baru, menggantikan rencana per hari PRD v1 §17 (yang salah satu hari dan memakai peran "AI" & "UI/UX" yang tidak ada di tim). Kapasitas dihitung ulang dengan jawaban tim: 10 jam/hari (dengan bantuan AI), DA mengambil sebagian tiket backend & frontend sederhana, tanpa pemangkasan Must. |
-| 1.1 | 22 Okt 2026 | Frontend mempertahankan tampilan & layout smartroute-dashboard: FS-01 tidak lagi membuang halaman/komponen lama, FS-04 jadi adaptasi tema (4 → 3 j), FS-06/FS-12/FS-18 memakai komponen lama (FS-12 4 → 3 j, FS-18 3 → 2 j), FS-21 menjadi `MapWorkspace` dasar (2 → 4 j), tiket baru FS-33 (responsif, 3 j), DA-21 dipindah ke DA. |
+| 1.1 | 22 Okt 2026 | Frontend mempertahankan tampilan & layout smartroute-dashboard: FS-01 tidak lagi membuang halaman/komponen lama, FS-04 jadi adaptasi tema (4 → 3 j), FS-06/FS-12/FS-18 memakai komponen lama (FS-12 4 → 3 j, FS-18 3 → 2 j), FS-21 menjadi `MapWorkspace` dasar (2 → 4 j), tiket baru FS-33 (responsif, 3 j), layar Rekomendasi dipindah ke DA (FS-13 → DA-21). |
+| 1.2 | 22 Okt 2026 | Hasil audit: FS-01 juga memperbaiki build (`baseUrl`, T14); DA-05 memakai cek magic bytes karena `file-type` ESM-only. Jam tidak berubah. |
 
 ---
 
@@ -68,7 +69,7 @@ Beban: FS 5 j · BE 4 j · PM 5 j · DA 4 j
 | --- | --- | --- | --- | --- | --- | --- |
 | BE-01 | Bersihkan backend lama | Hapus route/controller/seed/simulator/dump lama (SDD §2.2); `app.js` + `index.js`; helmet, `cors({origin})`, `express.json`, `respond`, `AppError`, `errorHandler`. | BE | PRE-01 | 2 j | `npm run dev` jalan; `GET /api/health` 200; tidak ada referensi `stations`/`admins`. |
 | BE-02 | Env, pool, migrasi | `config/env.js` (zod), `pool.js` dengan `DATABASE_URL`, `db/migrate.js`, skrip `db:migrate`. | BE | BE-01 | 2 j | Tanpa `JWT_SECRET` server gagal start; `db:migrate` membuat 5 migrasi + `schema_migrations`. |
-| FS-01 | Bersihkan frontend lama (tanpa membuang UI) | Hapus hanya data/tipe domain stasiun (`data/stations.json`, tipe stasiun/armada/flag di `services/api.ts`, `useStations`, `FlagContext`), aset contoh, `FlagProvider` ganda, axios; **pertahankan** halaman & komponen untuk diadaptasi (SDD §2.3); ganti Google Fonts dengan fontsource (T13); `.gitignore`; `lang="id"`. | FS | PRE-01 | 2 j | `npm run build` hijau; tanpa internet font tetap Plus Jakarta Sans/Source Code Pro. |
+| FS-01 | Bersihkan frontend lama (tanpa membuang UI) | Hapus hanya data/tipe domain stasiun (`data/stations.json`, tipe stasiun/armada/flag di `services/api.ts`, `useStations`, `FlagContext`), aset contoh, `FlagProvider` ganda, axios; **pertahankan** halaman & komponen untuk diadaptasi (SDD §2.3); ganti Google Fonts dengan fontsource (T13); hapus `baseUrl` di `tsconfig.app.json` (T14, build asli gagal); `.gitignore`; `lang="id"`. | FS | PRE-01 | 2 j | `npm run build` (termasuk `tsc -b`) hijau; tanpa internet font tetap Plus Jakarta Sans/Source Code Pro. |
 | FS-02 | apiClient, types, labels | `lib/apiClient.ts`, `lib/types.ts` (SDD §8.1), `lib/labels.ts` (PRD §8). | FS | FS-01 | 3 j | `tsc` hijau; label semua nilai PRD §8 ada. |
 | PM-01 | Catat hasil mentoring & TM | Ringkas masukan mentor/aturan TM; ubah keputusan bila perlu. | PM | — | 2 j | Catatan di `docs/notes/`; perubahan tercatat di Log Perubahan dokumen terkait. |
 | PM-02 | Finalisasi wireframe | Terapkan masukan mentor ke wireframe S01–S06. | PM | PRE-09, PM-01 | 3 j | Wireframe S01–S06 bertanda "final". |
@@ -105,7 +106,7 @@ Beban: FS 10 j · BE 10 j · PM 7 j · DA 10 j
 | FS-07 | Formulir laporan S03-B | `ReportForm`, `PhotoPicker` (kompresi 1280 px), wilayah dari Z3. | FS | FS-06, BE-07 | 3 j | Validasi per field UI-SPEC; laporan tersimpan via R1. |
 | FS-24 | Banner mode cadangan | `useHealth` (Z1, 60 dtk), `FallbackBanner`, berkas `.env.offline` contoh. | FS | FS-03, BE-07 | 2 j | Banner muncul saat `AI_MODE=fallback`. |
 | DA-04 | Fallback & kamus | `dictionaries.js` (AI-PROMPTS §7), `fallback.js` per tujuan, `applyHardRules` + uji (review BE). | DA | PRE-10, BE-08 | 4 j | `unit/fallback.test.js`, `hardRules.test.js` hijau; 8 kasus bahaya → instansi. |
-| DA-05 | Upload & foto | `upload.js` (multer memory 5 MB), `photo.service` (file-type, sharp WebP 1280, tanpa EXIF), route `/files/*` dengan cek hak. | DA | BE-03 | 3 j | Uji: 413, 415, EXIF hilang; Z2 401/404. |
+| DA-05 | Upload & foto | `upload.js` (multer memory 5 MB), `photo.service` (magic bytes via `lib/magic.js`, sharp WebP 1280, tanpa EXIF), route `/files/*` dengan cek hak. | DA | BE-03 | 3 j | Uji: 413, 415, EXIF hilang; Z2 401/404. |
 | DA-06 | rankAndStore | Query kandidat + simpan match + uji integrasi dengan seed (SDD §6.4). | DA | DA-03, DA-02 | 3 j | Laporan demo menghasilkan 3 match urut di DB uji. |
 | PM-05 | Uji Checkpoint 1 & teks S01–S06 | Lapor → triase → verifikasi → matching manual (verify via API bila UI belum); review `labels.ts`. | PM | BE-09, FS-07 | 3 j | Laporan checkpoint (lulus/gagal per GWT) di `docs/notes/`. |
 | PM-06 | Slide presentasi v1 | Slide masalah (data PRE-11), etika, penutup, roadmap. | PM | PRE-11 | 4 j | Slide v1 dibagikan; angka hanya dari PRE-11. |

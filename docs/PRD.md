@@ -1,6 +1,6 @@
 # PRD SUSI Connect — Product Requirements Document
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 2.1 · **Hackathon:** LOGICODIX 2026, Subtema 5 Civic Tech & Community Service
+**Tanggal:** 22 Oktober 2026 · **Versi:** 2.2 · **Hackathon:** LOGICODIX 2026, Subtema 5 Civic Tech & Community Service
 **Sumber kebenaran fitur.** Teknis: [SDD.md](SDD.md) · Kontrak API: [API.md](API.md) · Layar: [UI-SPEC.md](UI-SPEC.md) · AI: [AI-PROMPTS.md](AI-PROMPTS.md) · Tiket: [TICKETS.md](TICKETS.md) · Demo: [DEMO-SCRIPT.md](DEMO-SCRIPT.md)
 
 Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta eksternal yang harus dicek · **[PERLU DATA]** angka belum ada · **[ASUMSI]** keputusan kecil penulis yang bisa diubah tim.
@@ -12,6 +12,7 @@ Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta ekst
 | 1.0 | 22 Okt 2026 | PRD awal (Claude Docs, rev 14). |
 | 2.0 | 22 Okt 2026 | **Struktur:** bagian AI rinci, skema DB, dan endpoint dipindah ke AI-PROMPTS.md, `db/migrations/`, API.md; ditambah kamus istilah (§8), kriteria Given/When/Then untuk semua Must & Should (§9), data seed (§12), matriks keterlacakan (§11). **Keputusan baru:** wilayah pilot = Provinsi DKI Jakarta (kecamatan demo Tebet [ASUMSI]); monorepo; izin panitia pemakaian kode lama sudah ada; DA menulis matching & metrik; verifikator bukti = moderator **atau** pelapor asli; moderator/instansi per kecamatan; **tidak ada pemangkasan Must** (v1 §7.5 urutan pemangkasan dihapus atas keputusan tim, risikonya dicatat di §17 dan §18); kapasitas 10 jam/hari dan DA mengambil sebagian tiket backend/frontend (jawaban tim). **Perbaikan inkonsistensi:** (1) peran v1 §5 memuat relawan/koordinator sebagai `users.role` → dua tingkat (D2); (2) status v1 §10 vs SDD v1 §6.1 digabung (lihat §14); (3) `POST /routes` → `GET /routes`; (4) `PATCH /actions/:id/status` → endpoint aksi bernama; (5) nilai sumber rute `live` → `ors`; (6) tabel `activities` → `audit_logs`; (7) peta kerja memakai `MapMarker`; (8) hari kerja v1 §17 salah satu hari (Hari 1 = Sabtu 7 Nov, sesuai). |
 | 2.1 | 22 Okt 2026 | Keputusan 19: frontend mempertahankan tampilan & layout smartroute-dashboard (SDD §2.3, §8.6–8.7; UI-SPEC §0). Pemilik layar Rekomendasi (M06) pindah ke DA. |
+| 2.2 | 22 Okt 2026 | Hasil audit seed: L01–L03 (cadangan di titik demo) dipindah ke T − 8 hari dan diberi awalan "(Cadangan)" — sebelumnya laporan live akan tampil sebagai duplikat dari 3 laporan cadangan; L15 ke T − 9 hari; H01 dipindah keluar rute demo — sebelumnya rute awal di langkah 5 sudah membelok karena H01 sehingga efek hambatan live tidak jelas. Matriks M11 menambah R2. |
 
 ---
 
@@ -557,7 +558,7 @@ Dihitung oleh `GET /metrics/impact` (SQL di SDD §6.6). Data demo **sintetis**; 
 | P3, P4 | M08 | S09, S10, S11 | R12, X1–X7, T1–T6, G2 | `actions`, `tasks`, `task_assignments`, `ai_analyses` | `unit/actionStatus.test.js`, `api/actions.test.js`, `api/tasks.test.js` |
 | P5 | M09 | S11, S13 | P1, O1, O2, O4 | `road_obstacles`, `route_cache` | `unit/geo.test.js`, `unit/route.test.js` (ORS di-mock), `api/obstacles.test.js`, `api/routes.test.js` |
 | P4 | M10 | S05, S07, S11 | E1, E3, E4, X6 | `evidences`, `actions`, `reports` | `api/evidences.test.js` |
-| P4 | M11 | S02, S14 | K1, R3 | semua via SQL §6.6, view `reports_public` | `api/metrics.test.js`, `api/reports.public.test.js` |
+| P4 | M11 | S02, S14 | K1, R3, R2 (ReportRankingCard saat login) | semua via SQL §6.6, view `reports_public` | `api/metrics.test.js`, `api/reports.public.test.js` |
 | P1 | M12 | S18 | C4 | `ai_analyses` | `api/faq.test.js`, `unit/faqFallback.test.js` |
 | etika | M13 | S05, S06, S09, S12, S15, S17, S18 | U4, Z1 (+ semua AI) | `ai_analyses` | `api/admin.test.js`, `unit/allowlist.test.js` |
 | demo | M14 | semua (banner) | Z1, A2, A3 | semua (`is_synthetic`) | `api/seed.test.js`, E2E manual DEMO-SCRIPT.md |
@@ -651,13 +652,13 @@ Daftar kelurahan perlu dicocokkan dengan data resmi BPS/Pemprov DKI **[PERLU DIV
 
 ### 12.5 Laporan
 
-Titik laporan demo utama `L00` (dibuat live saat demo, tidak di-seed): −6.23190, 106.85410, Tebet Barat. Laporan seed:
+Titik laporan demo utama `L00` (dibuat live saat demo, tidak di-seed): −6.23190, 106.85410, Tebet Barat. Laporan cadangan L01–L03 berada di titik yang sama tetapi dibuat **lebih dari 7 hari** sebelumnya dan berjudul "(Cadangan)", supaya laporan live tidak dianggap duplikatnya (aturan S03: ≤ 100 m **dan** ≤ 7 hari) dan mudah dibedakan di antrian. Laporan seed:
 
 | Kode | Judul | Kategori | Status | Detail tambahan | Untuk langkah demo |
 | --- | --- | --- | --- | --- | --- |
-| L01 | Sampah menumpuk di lahan samping musala | sampah | menunggu (triase `done`) | pelapor Rina, foto 1, titik = L00 | Cadangan langkah 2 (moderasi) |
-| L02 | Sampah menumpuk di lahan samping musala | sampah | diverifikasi | 3 match diusulkan (0,963/0,748/0,657) | Cadangan langkah 3 (matching) |
-| L03 | Sampah menumpuk di lahan samping musala | sampah | dikoordinasikan | match Melati diterima; aksi A03 `direncanakan`, tugas "Angkut ke TPS" (kuota 2, `needs_route`), "Pemilahan" (kuota 4), "Dokumentasi" (kuota 1) | Cadangan langkah 4 (rute) |
+| L01 | (Cadangan) Sampah menumpuk di lahan samping musala | sampah | menunggu (triase `done`) | pelapor Rina, foto 1, titik = L00, **dibuat T − 8 hari** | Cadangan langkah 2 (moderasi) |
+| L02 | (Cadangan) Sampah menumpuk di lahan samping musala | sampah | diverifikasi | 3 match diusulkan (0,963/0,748/0,657), T − 8 hari | Cadangan langkah 3 (matching) |
+| L03 | (Cadangan) Sampah menumpuk di lahan samping musala | sampah | dikoordinasikan (T − 8 hari) | match Melati diterima; aksi A03 `direncanakan`, tugas "Angkut ke TPS" (kuota 2, `needs_route`), "Pemilahan" (kuota 4), "Dokumentasi" (kuota 1) | Cadangan langkah 4 (rute) |
 | L04 | Sampah di ujung Gg. Masjid | sampah | dikoordinasikan | aksi A04 `berjalan`, Dimas check-in, bukti before | Cadangan langkah 5 (bukti) |
 | L05 | Sampah di pinggir lapangan voli | sampah | dikoordinasikan | aksi A05 `menunggu_verifikasi`, bukti before + after `menunggu`, jam relawan 3×2, 45 kg | Cadangan verifikasi bukti |
 | L06–L09 | Empat laporan sampah/lingkungan lain | sampah, lingkungan_lain | selesai | aksi terverifikasi, total 14 jam relawan, 120 kg (perkiraan) | Angka dashboard |
@@ -666,13 +667,13 @@ Titik laporan demo utama `L00` (dibuat live saat demo, tidak di-seed): −6.2319
 | L12 | Got mampet depan Gg. Hijau | drainase | diverifikasi | `campuran`; rujukan `origin='campuran'` draf | Contoh jalur campuran (Q&A) |
 | L13 | Tumpukan sampah klinik di pojok gang | sampah | menunggu | `hazard_flags={limbah_medis}`, penanganan instansi | Contoh aturan bahaya (Q&A) |
 | L14 | Sampah samping musala (duplikat) | sampah | ditolak | `duplikat`, `duplicate_of=L01` | Contoh penolakan |
-| L15 | Sampah dekat musala, sisi timur | sampah | menunggu | 42 m dari L01, 1 hari sebelumnya | Contoh duplikat (S03) |
+| L15 | Sampah dekat musala, sisi timur | sampah | menunggu | 42 m dari L01, T − 9 hari | Contoh duplikat (S03) |
 
 ### 12.6 Hambatan
 
 | Kode | Jenis | Lokasi | Radius | Status | Berlaku | Pembuat | Peran |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| H01 | perbaikan_jalan "Galian saluran (sintetis)" | di jalur titik kumpul → TPS aksi A03 [titik ditetapkan di PRE-12, final di PM-10] | 60 m | aktif | T + 3 hari | Lina | instansi |
+| H01 | perbaikan_jalan "Galian saluran Jl. Tebet Utara (sintetis)" | **di luar** rute demo (titik kumpul → lokasi → TPS), agar perubahan rute di langkah 5 hanya disebabkan hambatan live | 60 m | aktif | T + 3 hari | Lina | instansi |
 | H02 | kegiatan_warga "Hajatan tutup gang (sintetis)" | Tebet Timur | 40 m | aktif (turunan: kedaluwarsa) | dibuat T − 2 hari, berlaku sampai T − 1 hari | Sari | koordinator |
 | H03 | demo "Aksi massa (sintetis)" | Jl. Casablanca | 150 m | aktif | T + 1 hari | Budi | moderator |
 | H04 | banjir "Genangan setinggi betis (sintetis)" | Bukit Duri | 80 m | menunggu_konfirmasi (1 konfirmasi) | T + 2 hari | Rina | warga |

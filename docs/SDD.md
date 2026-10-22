@@ -1,6 +1,6 @@
 # SDD SUSI Connect — Software Design Document
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 2.1 · **Sumber kebenaran teknis** (fitur: [PRD.md](PRD.md))
+**Tanggal:** 22 Oktober 2026 · **Versi:** 2.2 · **Sumber kebenaran teknis** (fitur: [PRD.md](PRD.md))
 **Dokumen terkait:** [API.md](API.md) · [AI-PROMPTS.md](AI-PROMPTS.md) · [UI-SPEC.md](UI-SPEC.md) · [TICKETS.md](TICKETS.md) · [`db/migrations/`](../db/migrations)
 
 ## Log Perubahan
@@ -10,6 +10,7 @@
 | 1.0 | 22 Okt 2026 | SDD awal (Claude Docs). |
 | 2.0 | 22 Okt 2026 | **Struktur:** dua repo → **monorepo** `susi-connect` (`backend/`, `web/`, `db/`, `docs/`); migrasi pindah dari `backend/src/db/migrations/` ke `db/migrations/` di root. **Skema:** ALTER di §7 v1 digabung ke file migrasi 001–005 final; tambah `areas`, `report_categories`, `users.is_demo`, `reports.reject_reason`, `matches.status='kedaluwarsa'`, `tasks.needs_route`, `actions.match_id`, `road_obstacles.source_role`, `notifications.title/body`. **Konfigurasi DB:** `pool.js` repo lama memakai `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME`, SDD v1 menulis `DATABASE_URL` → dipilih **`DATABASE_URL`** dan `pool.js` diubah (§2.2). **State machine:** digabung dari PRD v1 §10 dan SDD v1 §6.1 — `forward` boleh dari `menunggu` **dan** `diverifikasi`; ditambah event `return` dan `reopen` yang ada di PRD tetapi hilang di SDD v1; pembatalan aksi kembali ke `diverifikasi` oleh sistem (bukan koordinator). **API:** dipindah ke API.md; `GET /routes` (bukan POST); `source` rute `ors/cache/straight`; JSON snake_case. **Peta:** SDD v1 menyebut `MapClusterLayer` dengan warna per status — komponen itu hanya punya satu `pointColor` (map.tsx baris 1885–1911), jadi peta kerja memakai `MapMarker` per laporan dan `MapClusterLayer` hanya untuk peta publik (§8.6). **Wilayah:** pilot = Provinsi DKI Jakarta (daratan), kecamatan demo utama Tebet [ASUMSI]. **Kepemilikan:** `matching.service`, `metrics.service`, upload/foto, geo/hambatan, match API, notifikasi, komunitas/kanal/admin API ditulis DA, direview BE (TICKETS.md §0). **Izin panitia:** pemakaian kode repo lama sudah diizinkan (jawaban tim 22 Okt). |
 | 2.1 | 22 Okt 2026 | Atas permintaan tim, frontend **mempertahankan tampilan & layout smartroute-dashboard**: tema gelap (`dark-1/2`, `light-1/2`, `red-1`, `green-1`), font Plus Jakarta Sans + Source Code Pro, layout `Dashboard.tsx` (KPI + grid kartu) dan peta layar penuh `Map.tsx` dengan panel mengambang & modal. Halaman/komponen lama kini **diubah**, bukan dihapus (§2.3); komponen turunan baru di §8.4; `MapWorkspace` multi-mode di §8.5–8.6; gaya §8.7 diganti. Temuan baru T13: font dari Google Fonts (gagal offline). |
+| 2.2 | 22 Okt 2026 | Hasil audit: (1) T14 — build web gagal karena `baseUrl` (TS 6); (2) `file-type` ESM-only → cek magic bytes sendiri (§6.7); (3) `?token=` hanya untuk `/files/*` (§5.2); (4) kunci `route_cache` memakai geometri hambatan, bukan id — sebelumnya cache gladi tidak pernah kena saat hambatan dibuat ulang di demo (§6.5, §10.3); (5) K1 menambah `breakdown` untuk `StatusSummaryCard`/`ActionsStatusCard` yang sebelumnya tidak punya sumber data (§6.6, §8.1); (6) data buatan akun sintetis ikut `is_synthetic` (§6.9). |
 
 ---
 
@@ -55,13 +56,14 @@ Kedua repo diperiksa langsung (commit terakhir: backend `fecdbc0 feat: auth`, fr
 | T10 | `.gitignore` frontend tidak memuat `.env` | `web/.gitignore` | Tambah `.env`, `.env.*`, `!.env.example` | FS-01 |
 | T11 | `axios` terpasang tapi tidak dipakai | `web/package.json` | `npm uninstall axios` | FS-01 |
 | T13 | Font dimuat dari Google Fonts (`index.html` baris 6–8: Plus Jakarta Sans, Source Code Pro) | `web/index.html` | Tanpa internet font jatuh ke default, tampilan demo berubah | Ganti dengan paket `@fontsource-variable/plus-jakarta-sans` & `@fontsource-variable/source-code-pro` [PERLU DIVERIFIKASI nama paket] di-import di `index.css`; hapus 3 tag `<link>` | FS-01 |
+| T14 | `npm run build` gagal di repo asli: TypeScript 6 menolak `"baseUrl": "."` (TS5101) | `web/tsconfig.app.json` baris 25 | Build & CI merah sejak awal | Hapus `baseUrl` (alias `@/*` di `paths` tetap jalan dengan `moduleResolution: bundler`) [PERLU DIVERIFIKASI saat FS-01]; `vite build` sendiri sudah lolos (dicek 22 Okt) | FS-01 |
 | T12 | `pool.js` memanggil `process.exit(-1)` pada galat idle client | `backend/src/db/pool.js` | Dipertahankan (fail-fast), tetapi log tanpa data | — |
 
 ### 2.2 Backend: file lama → tindakan
 
 | File repo lama | Tindakan | Menjadi |
 | --- | --- | --- |
-| `package.json` | **Ubah**: nama `susi-backend`; skrip `dev`, `start` (`node src/index.js`), `db:migrate`, `seed`, `test`, `eval:ai`, `ai:record`; tambah `zod`, `multer`, `sharp`, `helmet`, `express-rate-limit`, `@google/genai`, `file-type`; dev: `supertest` | `backend/package.json` |
+| `package.json` | **Ubah**: nama `susi-backend`; skrip `dev`, `start` (`node src/index.js`), `db:migrate`, `seed`, `test`, `eval:ai`, `ai:record`; tambah `zod`, `multer`, `sharp`, `helmet`, `express-rate-limit`, `@google/genai` (punya build CommonJS, dicek di `exports.require`); dev: `supertest`. **Tidak** memakai `file-type`: versi terbaru (22.x) hanya ESM sehingga tidak bisa di-`require` dari backend CommonJS | `backend/package.json` |
 | `.gitignore` | Pertahankan + tambah `uploads/` | `backend/.gitignore` |
 | `src/index.js` | **Ubah**: hapus simulator & 4 route lama; pasang `helmet`, `cors(origin)`, `express.json({limit:'100kb'})`, route baru, `errorHandler` | `backend/src/index.js` + `src/app.js` (app tanpa `listen`, untuk supertest) |
 | `src/db/pool.js` | **Ubah**: `new Pool({ connectionString: env.DATABASE_URL })`; `dotenv` dipindah ke `config/env.js` | sama |
@@ -78,7 +80,8 @@ Kedua repo diperiksa langsung (commit terakhir: backend `fecdbc0 feat: auth`, fr
 | --- | --- | --- |
 | `package.json` | **Ubah**: nama `susi-web`; hapus `axios`, `react-device-detect`; **pertahankan** `react-icons` & `motion` (dipakai komponen lama); tambah `pmtiles`, `@protomaps/basemaps` (§10), paket fontsource (T13) | versi dikunci di lockfile |
 | `.gitignore` | **Ubah** (T10) | — |
-| `vite.config.ts`, `tsconfig*.json`, `eslint.config.js`, `components.json` | **Pertahankan** | alias `@` dan registry `@mapcn` tetap |
+| `vite.config.ts`, `tsconfig.json`, `tsconfig.node.json`, `eslint.config.js`, `components.json` | **Pertahankan** | alias `@` dan registry `@mapcn` tetap |
+| `tsconfig.app.json` | **Ubah**: hapus `baseUrl` (T14) | — |
 | `index.html` | **Ubah**: `<html lang="id">`, judul "SUSI Connect", hapus `<link>` Google Fonts (T13) | — |
 | `src/main.tsx` | **Ubah**: hapus `FlagProvider` | — |
 | `src/App.tsx` | **Tulis ulang**: route map §8.5 | — |
@@ -290,7 +293,7 @@ async function loadUser(token) {
   try { payload = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] }); }
   catch { throw new AppError('AUTH_INVALID', 401, 'Sesi berakhir, silakan masuk lagi'); }
   const { rows } = await pool.query(
-    `SELECT u.id, u.name, u.role, u.scope_kecamatan,
+    `SELECT u.id, u.name, u.role, u.scope_kecamatan, u.is_synthetic,
             coalesce(json_agg(json_build_object('id', cm.community_id, 'member_role', cm.member_role))
                      FILTER (WHERE cm.community_id IS NOT NULL), '[]') AS communities
        FROM users u LEFT JOIN community_members cm ON cm.user_id = u.id
@@ -298,7 +301,8 @@ async function loadUser(token) {
   if (!rows[0]) throw new AppError('AUTH_INVALID', 401, 'Akun tidak ditemukan');
   return rows[0];
 }
-function bearer(req) { const h = req.get('authorization') || ''; return h.startsWith('Bearer ') ? h.slice(7) : req.query.token; }
+// ?token= hanya diterima di /api/files/* (tag <img> tidak bisa mengirim header); route lain wajib header.
+function bearer(req) { const h = req.get('authorization') || ''; if (h.startsWith('Bearer ')) return h.slice(7); return req.baseUrl.endsWith('/files') ? req.query.token : undefined; }
 exports.requireAuth = async (req, _res, next) => {
   try { const t = bearer(req); if (!t) throw new AppError('AUTH_REQUIRED', 401, 'Silakan masuk dulu'); req.user = await loadUser(t); next(); }
   catch (e) { next(e); }
@@ -700,7 +704,7 @@ async function compare(user, q) {} // S02: Promise.all tiga profil
 1. Muat aksi + laporan; `assertCommunity(user, action.community_id)` (anggota cukup).
 2. Titik: `from` → (`via=location` ? lokasi laporan) → (`to=dropoff` ? dropoff : lokasi laporan). `to=dropoff` tanpa dropoff → `VALIDATION_ERROR`.
 3. `obstacles = listActive(bboxAround(points, 2))`; buang hambatan yang lingkarannya memuat titik asal/tujuan (ORS akan gagal bila titik di dalam area terlarang) dan catat di `notice`.
-4. `key = sha256([from 4 desimal, titik lain 4 desimal, profile, ...obstacles.map(o => o.id + ':' + o.expires_at.toISOString()).sort()].join('|'))`.
+4. `key = sha256([from 4 desimal, titik lain 4 desimal, profile, ...obstacles.map(o => `${o.latitude.toFixed(4)},${o.longitude.toFixed(4)},${o.radius_m}`).sort()].join('|'))`. Kunci memakai **geometri** hambatan, bukan id/`expires_at`: hambatan yang sama yang dibuat ulang saat demo (id baru) tetap mengenai cache rekaman gladi, dan hambatan yang kedaluwarsa otomatis keluar dari daftar sehingga kunci berubah.
 5. `SELECT response FROM route_cache WHERE cache_key=$1 AND expires_at > now()` → hit: kembalikan dengan `source='cache'`.
 6. `ROUTING_MODE='cache'` dan miss → langkah 9. `ROUTING_MODE='straight'` → langkah 9.
 7. `POST {ORS_BASE_URL}/v2/directions/{profile}/geojson` header `Authorization: ORS_API_KEY`, body `{ coordinates: [[lng,lat],…], options: { avoid_polygons: { type: 'MultiPolygon', coordinates: obstacles.map(o => circlePolygon(o, o.radius_m).coordinates) } }, instructions: false }`, timeout 8 dtk [PERLU DIVERIFIKASI: path endpoint, batas ukuran/jumlah poligon, kuota harian akun tim].
@@ -777,6 +781,18 @@ SELECT
   (SELECT avg(is_synthetic::int) FROM r) AS is_synthetic_share;
 ```
 
+**Breakdown untuk kartu dashboard** (`StatusSummaryCard`, `ActionsStatusCard`) — query kedua dengan CTE `r`/`act` yang sama:
+
+```sql
+SELECT
+  (SELECT coalesce(json_object_agg(status, n), '{}') FROM (SELECT status, count(*) n FROM r GROUP BY status) x)   AS reports_by_status,
+  (SELECT coalesce(json_object_agg(status, n), '{}') FROM (SELECT status, count(*) n FROM act GROUP BY status) y) AS actions_by_status,
+  (SELECT count(*) FROM tasks t JOIN act ON act.id = t.action_id
+    WHERE t.status = 'terbuka' AND act.status IN ('direncanakan', 'berjalan'))                                     AS open_tasks;
+```
+
+Status yang tidak muncul diisi 0 oleh service. Breakdown ikut dikirim ke publik (hanya hitungan, tanpa lokasi).
+
 `metrics.service` memetakan kolom ke `{key, label, value, unit, formula}` memakai tabel PRD §10 (teks rumus sama persis). `ai_fallback_rate` dan `ai_tokens_per_report` tidak terfilter wilayah (log AI chat/FAQ tidak punya wilayah) — dinyatakan di `formula`.
 
 ### 6.7 `photo.service.js`
@@ -791,7 +807,7 @@ SELECT
 async function storeImage(buf, folder) {}
 ```
 
-1. `fileTypeFromBuffer(buf)` (paket `file-type`) ∉ `image/jpeg|png|webp` → `UNSUPPORTED_MEDIA`.
+1. `sniffImage(buf)` di `lib/magic.js` memeriksa magic bytes: JPEG `FF D8 FF`, PNG `89 50 4E 47 0D 0A 1A 0A`, WebP `52 49 46 46 ?? ?? ?? ?? 57 45 42 50`; selain itu → `UNSUPPORTED_MEDIA` (tanpa paket `file-type`, yang ESM-only).
 2. `sharp(buf).rotate().resize({ width: 1280, height: 1280, fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toBuffer({ resolveWithObject: true })` — `sharp` tidak menyalin metadata kecuali `withMetadata()` dipanggil, sehingga EXIF/GPS hilang [PERLU DIVERIFIKASI pada versi sharp yang dipasang; uji API memastikan].
 3. Nama `crypto.randomUUID() + '.webp'`; tulis ke `UPLOAD_DIR/<folder>/`; kembalikan path relatif.
 4. File ditulis **sebelum** transaksi DB; bila transaksi gagal, `unlink` di blok `catch` pemanggil.
@@ -824,6 +840,7 @@ async function enqueue(client, n) {}
 3. Laporan dibuat langsung dengan status target + `report_status_history` lengkap agar timeline wajar; foto disalin dari `fixtures/photos/` (foto buatan tim, tanpa wajah/plat) lewat `photo.service.storeImage`.
 4. Waktu relatif terhadap `now()` (mis. `created_at = now() - interval '2 days'`) agar hambatan aktif/kedaluwarsa selalu benar saat demo.
 5. Selesai < 1 menit; mencetak ringkasan akun demo.
+6. **Data yang dibuat akun sintetis saat demo/gladi juga sintetis:** service yang menulis `reports`, `road_obstacles`, `users` (admin) mengisi `is_synthetic = req.user.is_synthetic`; tabel tanpa kolom itu (aksi, tugas, bukti, rujukan) ikut induknya. Karena itu laporan live di panggung tetap berlabel sintetis di dashboard, dan `npm run seed` menghapusnya juga.
 
 ---
 
@@ -984,7 +1001,8 @@ export interface RouteResult {
 export interface RouteOption { profile: RouteProfile; label: string; distance_m: number; duration_s: number | null; cost_idr_est: number | null; source: RouteSource }
 
 export interface Metric { key: string; label: string; value: number | null; unit: string; formula: string }
-export interface ImpactMetrics { filters: Record<string, unknown>; is_synthetic_share: number; metrics: Metric[] }
+export interface ImpactBreakdown { reports_by_status: Record<ReportStatus, number>; actions_by_status: Record<ActionStatus, number>; open_tasks: number }
+export interface ImpactMetrics { filters: Record<string, unknown>; is_synthetic_share: number; metrics: Metric[]; breakdown: ImpactBreakdown }
 
 export interface Community { id: number; name: string; description: string | null; categories: (Category | 'umum')[]; skills: Skill[]; kecamatan: string; coverage_kelurahan: string[]; member_count: number; is_synthetic: boolean }
 export interface Notification { id: number; type: string; title: string; body: string | null; entity: string; entity_id: number; link: string; read_at: string | null; created_at: string }
@@ -1310,7 +1328,7 @@ export const offlineStyle: StyleSpecification = {
 ### 10.3 AI dan rute
 
 - `AI_MODE=fallback`: cache rekaman gladi (`seed/ai-cache`) → aturan. Rekam dengan `npm run ai:record` setelah naskah demo final (Kamis 12 Nov).
-- `ROUTING_MODE=cache`: `route_cache` diisi saat gladi online; karena kunci memuat id hambatan, **jalankan gladi dengan seed yang sama** lalu jangan menjalankan `npm run seed` lagi sebelum demo, atau ekspor/impor `route_cache` (`npm run routes:export` → `seed/route-cache.json`, diimpor oleh seed).
+- `ROUTING_MODE=cache`: `route_cache` diisi saat gladi online, dengan dan tanpa hambatan demo (titik & radius persis DEMO-SCRIPT T4). Karena kunci berbasis geometri (§6.5), cache tetap berlaku setelah `npm run seed` ulang. Ekspor/impor: `npm run routes:export` → `seed/route-cache.json`, diimpor oleh seed (dengan `expires_at` diperpanjang).
 
 ---
 

@@ -1,6 +1,6 @@
 # UI-SPEC SUSI Connect — Spesifikasi Layar & Teks UI
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 1.1 · **Pemilik:** PM (teks & wireframe), FS (implementasi)
+**Tanggal:** 22 Oktober 2026 · **Versi:** 1.2 · **Pemilik:** PM (teks & wireframe), FS (implementasi)
 **Dirujuk dari:** [PRD.md](PRD.md) §9 · [SDD.md](SDD.md) §8.5 (route map) · Endpoint: [API.md](API.md)
 
 ## Log Perubahan
@@ -9,6 +9,7 @@
 | --- | --- | --- |
 | 1.0 | 22 Okt 2026 | Dokumen baru. Mencakup semua route SDD §8.5 (S01–S18). Perbaikan dari SDD v1 §9: (1) route `/aksi` (daftar aksi saya), `/verifikasi-bukti`, `/rujukan` (daftar), `/notifikasi`, `/admin` ditambahkan karena endpoint-nya ada tetapi layarnya belum; (2) peta kerja memakai `MapMarker` (bukan `MapClusterLayer`) agar warna per status bisa ditampilkan. |
 | 1.1 | 22 Okt 2026 | Tampilan & layout **smartroute-dashboard dipertahankan** (permintaan tim): tema gelap + font mono, navigasi `ViewToggle`, S02/S06/S08/S13 memakai satu `MapWorkspace` (peta layar penuh + panel mengambang + modal, dari `pages/Map.tsx`), S14 memakai layout `pages/Dashboard.tsx`; layar lain dibuat dengan gaya kartu yang sama. Ditambah route `/peta` dan `/dashboard`. Isi elemen, teks, validasi, dan endpoint tidak berubah. |
+| 1.2 | 22 Okt 2026 | Hasil audit — endpoint yang belum punya layar diberi tombol: X4 "Ubah aksi" & T1 "Tambah tugas" (S11), R8 "Kembalikan ke jalur komunitas" (S12), R9 "Buka ulang" (S17 tab baru). Konfirmasi hambatan S01 untuk warga dipindah ke `/peta` (sebelumnya hanya di `/hambatan` yang tidak bisa dibuka warga). Segmen Koordinator menambah "Lapor". Sumber data kartu dashboard = K1 `breakdown`. |
 
 ---
 
@@ -35,7 +36,7 @@
 | Tamu | Peta (`/`) · Dampak · Tentang AI · Masuk |
 | Warga | Peta (`/peta`) · Lapor · Laporan Saya · Dampak |
 | Relawan | Peta · Lapor · Aksi Saya · Laporan Saya |
-| Koordinator | Rekomendasi · Aksi Saya · Hambatan · Dampak |
+| Koordinator | Rekomendasi · Aksi Saya · Hambatan · Lapor · Dampak |
 | Moderator | Dashboard (`/dashboard`) · Moderasi · Bukti · Rujukan · Hambatan |
 | Instansi | Rujukan · Hambatan · Dampak |
 | Admin | Dashboard · Moderasi · Admin |
@@ -67,6 +68,8 @@
 | `ditolak` | Ditolak | silang |
 
 **Format** — tanggal: "7 Nov 2026, 09.12"; jarak: "1,8 km" / "650 m"; durasi: "± 7 menit"; angka desimal memakai koma. Semua angka rute/durasi/biaya diberi kata "perkiraan".
+
+**Foto** — semua `<img>` foto laporan & bukti memuat URL Z2 (`/files/report-photos/:id`, `/files/evidences/:id`) lewat `fileUrl()` (SDD §8.2); bila 401/404 tampil kotak abu-abu "Foto tidak tersedia".
 
 **Aksesibilitas** — semua kontrol bisa keyboard (urutan tab mengikuti urutan elemen di tabel); target sentuh ≥ 44 px; status tidak hanya warna (ikon + teks); gambar punya `alt` ("Foto laporan sampah, Tebet Barat"); kontras ≥ 4,5:1; `prefers-reduced-motion` mematikan animasi `motion`.
 
@@ -109,7 +112,7 @@
 | 4 | `SyntheticBanner` | "Angka ini berasal dari data sintetis untuk demo, bukan dampak nyata." | bila `is_synthetic_share > 0` |
 | 5 | Peta | `MapClusterLayer` dari R3; popup: label kategori, status, kelurahan, tanggal | lokasi ±110 m |
 | 6 | Catatan privasi di bawah peta | "Lokasi di peta publik dibulatkan sekitar 100 meter untuk melindungi pelapor." | — |
-| 7 | Filter status (chip) | "Semua", "Menunggu", "Dalam penanganan", "Selesai" | "Dalam penanganan" = diverifikasi + dikoordinasikan + diteruskan |
+| 7 | Filter status (chip) | "Semua", "Menunggu", "Dalam penanganan", "Selesai" | "Dalam penanganan" = `?status=diverifikasi,dikoordinasikan,diteruskan_instansi` |
 
 | State | Teks |
 | --- | --- |
@@ -356,6 +359,8 @@ Foto dikompres di browser (sisi panjang ≤ 1280 px) sebelum diunggah. **Endpoin
 | 7 | `EvidenceUploader` | "Foto sebelum" (opsi "Pakai foto laporan") dan "Foto sesudah"; catatan opsional |
 | 8 | `BeforeAfter` | berdampingan + status verifikasi |
 | 9 | Tombol koordinator | "Mulai aksi" (direncanakan), "Ajukan verifikasi" (berjalan; dialog jam per relawan + "Perkiraan sampah terangkut (kg)"), "Batalkan aksi" (alasan wajib) |
+| 10 | Ubah aksi (koordinator, hanya `direncanakan`) | tombol "Ubah aksi" → form S09 terisi (judul, jadwal, titik, relawan, alat, catatan keselamatan); sukses: "Aksi diperbarui." |
+| 11 | Tambah tugas (koordinator, `direncanakan`/`berjalan`) | tombol "+ Tambah tugas" di `TaskList` → dialog field `TaskEditor` satu baris |
 
 | State | Teks |
 | --- | --- |
@@ -366,7 +371,7 @@ Foto dikompres di browser (sisi panjang ≤ 1280 px) sebelum diunggah. **Endpoin
 | Menunggu verifikasi | Banner "Bukti sedang diperiksa moderator atau pelapor." |
 | Terverifikasi | Banner hijau "Aksi selesai dan terverifikasi. Terima kasih!" |
 
-**Endpoint:** mount → X3, O1 (bbox aksi); tombol tugas → T2/T3/T4/T5/T6; rute → P1 (saat panel dibuka atau parameter berubah), S02 → P2; unggah → E1; koordinator → X5/X6/X7. Setelah mutasi → `refetch()`.
+**Endpoint:** mount → X3, O1 (bbox aksi); tombol tugas → T2/T3/T4/T5/T6; rute → P1 (saat panel dibuka atau parameter berubah), S02 → P2; unggah → E1; koordinator → X4 (ubah), T1 (tambah tugas), X5/X6/X7. Setelah mutasi → `refetch()`.
 
 ---
 
@@ -389,13 +394,14 @@ Foto dikompres di browser (sisi panjang ≤ 1280 px) sebelum diunggah. **Endpoin
 | 7 | Bukti tindak lanjut | `EvidenceUploader` "Foto setelah ditangani instansi" |
 | 8 | Tombol | "Tandai laporan selesai" (hanya origin `instansi`, aktif bila ada bukti `after` sah) |
 | 9 | Untuk origin `campuran` | info: "Laporan ini juga ditangani komunitas. Status laporan mengikuti aksi komunitas." |
+| 10 | Tombol moderator (origin `instansi`, belum `ditindaklanjuti`) | "Kembalikan ke jalur komunitas" → dialog alasan wajib 5–300 (placeholder "Contoh: kelurahan meminta warga bergotong royong"); nonaktif bila ada penanda bahaya, tooltip "Laporan berpenanda bahaya harus ditangani instansi"; sukses: "Laporan dikembalikan dan direkomendasikan ke komunitas." |
 
 | State | Teks |
 | --- | --- |
 | `EVIDENCE_REQUIRED` | "Perlu foto setelah ditangani yang sudah diverifikasi." |
 | Sukses | "Status rujukan diperbarui." / "Laporan ditandai selesai." |
 
-**Endpoint:** daftar → F1; detail → F2; simpan → F3; bukti → E2; selesai → F4.
+**Endpoint:** daftar → F1; detail → F2; simpan → F3; bukti → E2; selesai → F4; kembalikan → R8.
 
 ---
 
@@ -409,7 +415,7 @@ Foto dikompres di browser (sisi panjang ≤ 1280 px) sebelum diunggah. **Endpoin
 | 2 | Daftar | jenis, keterangan, "Berlaku sampai 14 Nov, 23.59", lencana "Kedaluwarsa" (abu-abu) / "Menunggu konfirmasi" |
 | 3 | Form "Tandai hambatan" | "Jenis hambatan" (dropdown, wajib); titik (wajib, dalam DKI); "Radius" slider 10–500 m (default 50); "Keterangan (opsional)" ≤ 300; "Berlaku sampai" (default per jenis, maks 30 hari → "Maksimal 30 hari") |
 | 4 | Tombol | "Simpan hambatan" ; per item "Cabut" (pembuat/moderator) |
-| 5 | S01 konfirmasi | "Masih ada?" → "Ya, masih" / "Sudah tidak ada" |
+| 5 | S01 konfirmasi | "Masih ada?" → "Ya, masih" / "Sudah tidak ada". Karena `/hambatan` hanya untuk koordinator/moderator/instansi, warga & relawan memakai `ObstaclePanel` yang sama di `/peta` (`mode=warga`): tab "Menunggu konfirmasi" + tombol ini + "+ Usulkan hambatan" (O2 → `menunggu_konfirmasi`) |
 | 6 | Catatan | "Hambatan memengaruhi rute relawan. Hambatan kedaluwarsa otomatis tidak dipakai." |
 
 | State | Teks |
@@ -423,7 +429,7 @@ Foto dikompres di browser (sisi panjang ≤ 1280 px) sebelum diunggah. **Endpoin
 
 ## S14 — Dampak (`/dampak`)
 
-**Tujuan:** metrik dengan rumus. **Peran:** semua (detail sesuai peran). **Fitur:** M11. **Kerangka:** `DashboardPage` — judul "Dampak" (atau "Dashboard — Kecamatan <scope>" di `/dashboard`); 4 `KpiCard` teratas = Laporan masuk, Tingkat penyelesaian, Jam relawan, Perkiraan sampah terangkut; `StatusSummaryCard` = jumlah laporan per status; `ActionsStatusCard` = aksi per status + tugas terbuka; `ReportRankingCard` = laporan prioritas (urgensi lalu umur) dengan filter kelurahan (pengganti filter koridor). Metrik lain (#4) di bawah grid dalam `MetricsGrid`. Data: K1 + R2 (login) / K1 (publik).
+**Tujuan:** metrik dengan rumus. **Peran:** semua (detail sesuai peran). **Fitur:** M11. **Kerangka:** `DashboardPage` — judul "Dampak" (atau "Dashboard — Kecamatan <scope>" di `/dashboard`); 4 `KpiCard` teratas = Laporan masuk, Tingkat penyelesaian, Jam relawan, Perkiraan sampah terangkut; `StatusSummaryCard` = `breakdown.reports_by_status` dari K1; `ActionsStatusCard` = `breakdown.actions_by_status` + `open_tasks`; `ReportRankingCard` = laporan prioritas (urgensi lalu umur, R2) dengan filter kelurahan (pengganti filter koridor) — **hanya saat login**; untuk tamu kolomnya diisi `MetricsGrid` ringkas. Metrik lain (#4) di bawah grid dalam `MetricsGrid`. Data: K1 + R2 (login) / K1 (publik).
 
 | # | Elemen | Teks |
 | --- | --- | --- |
@@ -478,6 +484,7 @@ Elemen: judul "Notifikasi"; tombol "Tandai semua dibaca"; daftar (judul, isi, wa
 | Komunitas | tabel; form: Nama, Deskripsi, Kategori (multi), Keahlian (multi), Kecamatan, Kelurahan layanan (multi), Markas (titik), Kontak, Koordinator (email) | API G3 | G1, G3, G4, G5, G6 |
 | Kanal instansi | tabel; form: Nama, URL (https), Kategori, Kecamatan (kosong = nasional), Catatan | API H2 | H1, H2, H3 |
 | Log AI | tabel: waktu, tujuan, sumber, status, token, latensi, "dikoreksi" | — | U4 |
+| Laporan ditolak | tabel laporan `ditolak` (judul, alasan, tanggal) + tombol "Buka ulang" → dialog alasan banding wajib 5–300; sukses: "Laporan kembali ke antrian moderasi." | catatan 5–300 | R2 `status=ditolak`, R9 |
 
 Teks kosong: "Belum ada data." Sukses: "Tersimpan."
 

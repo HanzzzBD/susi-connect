@@ -1,6 +1,6 @@
 # DEMO-SCRIPT SUSI Connect — Grand Final & Video
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 1.1 · **Pemilik:** PM (naskah, presenter), FS (operator laptop), BE (cadangan teknis), DA (angka & slide)
+**Tanggal:** 22 Oktober 2026 · **Versi:** 1.2 · **Pemilik:** PM (naskah, presenter), FS (operator laptop), BE (cadangan teknis), DA (angka & slide)
 **Dirujuk dari:** PRD §16 · Data: PRD §12 · Layar: UI-SPEC.md
 
 ## Log Perubahan
@@ -9,6 +9,7 @@
 | --- | --- | --- |
 | 1.0 | 22 Okt 2026 | Dokumen baru, menurunkan PRD v1 §16 menjadi klik demi klik. Perubahan urutan: langkah rute (v1 3:30–4:20) dipindah setelah "buat aksi" karena rute membutuhkan `action_id` (API P1). Kasus duplikat & bahaya dipindah ke cadangan Q&A agar 7 menit cukup. |
 | 1.1 | 22 Okt 2026 | Klik disesuaikan dengan layout smartroute-dashboard yang dipertahankan: moderasi, rekomendasi, dan hambatan dikerjakan di peta layar penuh (panel mengambang + modal), navigasi lewat segmen `ViewToggle`. |
+| 1.2 | 22 Okt 2026 | Hasil audit: langkah 7 memakai akun moderator (metrik token AI & pelanggaran keselamatan tidak tersedia untuk tamu); tidak ada kartu "Laporan selesai" → pakai "Tingkat penyelesaian" + hitungan status; langkah 3 menambah koreksi perkiraan relawan/keahlian karena skor 0,96/0,75/0,66 bergantung pada keluaran triase. |
 
 ---
 
@@ -64,7 +65,7 @@ Format: **Waktu · Profil · Klik/aksi → hasil yang harus terlihat · Kalimat 
 1. Segmen **"Moderasi"** di `ViewToggle` → peta layar penuh; buka panel **"Antrian Moderasi"** (kanan atas) → kartu teratas (laporan baru Rina) → modal detail terbuka (atau klik marker → **"Lihat Lengkap →"**).
 2. Klik **"Kenapa?"** → alasan AI terlihat.
 3. Di **TriagePanel**, ubah **Urgensi: Sedang → Tinggi** → teks "Perubahanmu dicatat sebagai koreksi atas saran AI."
-4. Dropdown tombol di modal → **"Verifikasi"** → toast "Laporan diverifikasi. 3 komunitas diberi tahu." + daftar 3 rekomendasi dengan skor 0,96 / 0,75 / 0,66.
+4. Bila panel menunjukkan *Perkiraan relawan* ≠ 8 atau keahlian ≠ angkut+pilah (keluaran Gemini bisa berbeda), set ke **8** dan **angkut, pilah** sebelum verifikasi agar skor sama dengan slide — sekaligus contoh koreksi manusia. Dropdown tombol di modal → **"Verifikasi"** → toast "Laporan diverifikasi. 3 komunitas diberi tahu." + daftar 3 rekomendasi dengan skor 0,96 / 0,75 / 0,66.
 - **Kalimat:** "AI menyarankan, manusia memutuskan — dan koreksinya tercatat."
 - **Cadangan:** tombol nonaktif karena triase pending > 15 dtk → tunggu atau buka **L02** (sudah diverifikasi).
 
@@ -98,10 +99,10 @@ Format: **Waktu · Profil · Klik/aksi → hasil yang harus terlihat · Kalimat 
 - **Kalimat:** "Selesai bukan tombol, tetapi bukti yang diverifikasi orang lain. Pengunggah tidak bisa memverifikasi buktinya sendiri."
 - **Cadangan:** unggah gagal → buka aksi seed **A05** (L05) yang sudah `menunggu_verifikasi`, lalu verifikasi dari P2.
 
-### Langkah 7 — Dashboard (5:10–5:40) · Tab tamu → `/dampak`
+### Langkah 7 — Dashboard (5:10–5:40) · P2 Moderator Budi → `/dashboard`
 
-1. Buka **"Dampak"** (layout dashboard lama: 4 kartu KPI + ringkasan status + laporan prioritas) → banner "Angka ini berasal dari data sintetis…" → kartu *Laporan selesai*, *Jam relawan*, *Perkiraan sampah terangkut* sudah bertambah dari langkah 6; arahkan kursor ke ikon "i" → rumus.
-2. Tunjuk kartu **"Token AI per laporan"** dan **"Pelanggaran keselamatan: 0"**.
+1. Buka **"Dampak"** (layout dashboard lama: 4 kartu KPI + ringkasan status + laporan prioritas) → banner "Angka ini berasal dari data sintetis…" → kartu *Tingkat penyelesaian*, *Jam relawan*, *Perkiraan sampah terangkut* dan hitungan *Selesai* di ringkasan status sudah berubah dari langkah 6; arahkan kursor ke ikon "i" → rumus.
+2. Tunjuk kartu **"Token AI per laporan"** dan **"Pelanggaran keselamatan (harus 0)"** di bawah grid (metrik ini hanya untuk pengguna login, karena itu langkah ini memakai P2, bukan tab tamu).
 - **Kalimat:** "Dampak dihitung langsung dari data, dengan rumus terbuka — termasuk biaya AI-nya."
 - **Cadangan:** angka tidak berubah → muat ulang; bila tetap, tunjukkan rumus dan lanjut.
 

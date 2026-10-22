@@ -6,6 +6,7 @@
 --   * route_cache digabung dari SDD v1 §7.
 --   * road_obstacles.source_role mencatat peran pembuat; hambatan dari
 --     warga/relawan (S01) dibuat 'menunggu_konfirmasi'.
+--   * (audit 22 Okt) komentar cache_key: kunci berbasis geometri hambatan, bukan id.
 --   * Status 'kedaluwarsa' TIDAK disimpan: dihitung dari expires_at < now()
 --     agar tidak perlu cron.
 -- =====================================================================
@@ -51,5 +52,5 @@ CREATE TABLE route_cache (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   expires_at TIMESTAMPTZ NOT NULL
 );
-COMMENT ON COLUMN route_cache.cache_key IS 'sha256(from 4 desimal | to 4 desimal | profile | id:expires_at hambatan terurut).';
+COMMENT ON COLUMN route_cache.cache_key IS 'sha256(from 4 desimal | titik lain 4 desimal | profile | lat,lng,radius hambatan aktif terurut).';
 CREATE INDEX idx_route_cache_exp ON route_cache(expires_at);
