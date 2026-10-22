@@ -1,6 +1,6 @@
 # PRD SUSI Connect — Product Requirements Document
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 4.0 · **Hackathon:** LOGICODIX 2026, cabang **Mobile App Development**, Subtema 5 Civic Tech & Community Service
+**Tanggal:** 22 Oktober 2026 · **Versi:** 4.1 · **Hackathon:** LOGICODIX 2026, cabang **Mobile App Development**, Subtema 5 Civic Tech & Community Service
 **Sumber kebenaran fitur.** Teknis: [SDD.md](SDD.md) · Kontrak API: [API.md](API.md) · Layar: [UI-SPEC.md](UI-SPEC.md) · AI: [AI-PROMPTS.md](AI-PROMPTS.md) · Tiket: [TICKETS.md](TICKETS.md) · Demo: [DEMO-SCRIPT.md](DEMO-SCRIPT.md)
 
 Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta eksternal yang harus dicek · **[PERLU DATA]** angka belum ada · **[ASUMSI]** keputusan kecil penulis yang bisa diubah tim.
@@ -18,6 +18,7 @@ Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta ekst
 | 3.2 | 22 Okt 2026 | Keputusan 26 (hasil audit smartroute-app): basis kode & desain mobile dari app SmartRoute; tema otomatis hanya web. Beban 279/280 j. |
 | 3.3 | 22 Okt 2026 | Risiko R16 & pertanyaan terbuka diselaraskan dengan audit (stack mobile sudah terbukti; tersisa PMTiles & iOS). |
 | 4.0 | 22 Okt 2026 | **Perluasan MVP** (keputusan 27–31): M15 rekomendasi moda untuk umum (mesin rute SmartRoute), M16 panel admin mobile, M17 notifikasi push; Should S02–S05 dijadwalkan; kapasitas 12 jam/hari. Non-tujuan, §9.5, matriks §11, risiko R18–R21, Q&A, roadmap, pertanyaan terbuka diperbarui. |
+| 4.1 | 22 Okt 2026 | Keputusan 32: asisten OpenRouter SmartRoute tidak dipakai, layarnya memakai Gemini SUSI (pertanyaan terbuka ditutup). |
 
 ---
 
@@ -55,6 +56,7 @@ Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta ekst
 | 29 | Should yang belum terjadwal | **Dijadwalkan**: S02 (UI bandingkan moda ke lokasi aksi), S03 (UI duplikat), S04 (cek foto), S05 (samarkan foto) |
 | 30 | Notifikasi push | **Masuk MVP (Must M17)**: Expo Push Service (FCM/APNs) + cadangan notifikasi in-app saat offline |
 | 31 | Kapasitas | **12 jam/hari** (Sabtu 7 & 14: 5 jam) → 82 jam/orang, 328 jam tim; beban 319 jam (TICKETS §0) |
+| 32 | Asisten AI SmartRoute | **OpenRouter tidak dipakai**; layar asisten app SmartRoute dialihkan ke Gemini SUSI (chat-lapor M03 & chatbot M12); endpoint `/assistant/ask` layanan `mobility/` tidak diteruskan proxy |
 | 19 | Frontend | Pakai smartroute-dashboard apa adanya secara tampilan & layout (tema gelap, font mono, peta layar penuh + panel mengambang, layout dashboard KPI); halaman lama diadaptasi, bukan dibuang |
 
 ## 2. Ringkasan produk
@@ -859,7 +861,6 @@ Tiket ≤ 4 jam per hari, pemilik, dependensi, DoD, dan perbandingan dengan kapa
 - [ ] **Ketentuan cabang Mobile App Development** di guidebook: wajib APK? boleh backend lewat Cloudflare Tunnel padahal aturan "berjalan di localhost"? (PM → panitia) [PERLU DIVERIFIKASI]
 - [ ] **iOS:** ada Mac atau akun Apple Developer untuk development build iOS? Tanpa itu iOS tidak bisa dipasang di iPhone (MapLibre RN tidak jalan di Expo Go) [PERLU DIVERIFIKASI di PRE-15].
 - [ ] Laptop demo cukup RAM untuk OTP2 + PostgreSQL + backend + Expo sekaligus? (PRE-18)
-- [ ] Asisten AI SmartRoute (OpenRouter) **tidak** dipakai; layar asisten dialihkan ke Gemini SUSI — setuju?
 - [ ] Akun Firebase tim untuk FCM (PRE-19).
 - [ ] Domain Cloudflare milik tim (nama domain) untuk tunnel.
 - [ ] Dukungan PMTiles di MapLibre RN 11.3.8 dan build iOS (PRE-15). Versi Expo/MapLibre sudah pasti dari app SmartRoute.
