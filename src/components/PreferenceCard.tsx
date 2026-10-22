@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   Modal,
   Pressable,
   StyleSheet,
@@ -36,18 +38,18 @@ function PreferenceItem({
     <Pressable
       onPress={onPress}
       className={`flex-row justify-between items-center py-3.5 active:opacity-60 ${
-        showBorder ? "border-b border-white/10" : ""
+        showBorder ? "border-b border-line" : ""
       }`}
     >
-      <Text className="text-light-2 text-sm font-medium">{label}</Text>
+      <Text className="text-ink-2 text-sm font-medium">{label}</Text>
       <View className="flex-row items-center gap-1.5 flex-1 justify-end ml-4">
         <Text
-          className="text-light-1 text-sm font-semibold text-right"
+          className="text-ink text-sm font-semibold text-right"
           numberOfLines={1}
         >
           {value}
         </Text>
-        <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
+        <Ionicons name="chevron-forward" size={14} color="#737373" />
       </View>
     </Pressable>
   );
@@ -63,6 +65,13 @@ interface OptionModalProps {
   onClose: () => void;
 }
 
+const OPEN_MS = 220;
+const CLOSE_MS = 170;
+
+// Animasi buka/tutup sendiri (bukan animationType bawaan Modal): isi kartu
+// "dibekukan" (snapshot) selama animasi tutup berjalan. Sebelumnya pemanggil
+// langsung mengosongkan judul & pilihan saat menutup, sehingga selama fade
+// keluar kartu putih mengecil jadi kartu kosong — terlihat seperti dua modal.
 function OptionModal({
   visible,
   title,
@@ -71,77 +80,115 @@ function OptionModal({
   onSelect,
   onClose,
 }: OptionModalProps) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(visible);
+  const [snapshot, setSnapshot] = useState({ title, options, selectedValue });
+
+  useEffect(() => {
+    if (visible) {
+      setSnapshot({ title, options, selectedValue });
+      setMounted(true);
+      progress.setValue(0);
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: OPEN_MS,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    } else if (mounted) {
+      Animated.timing(progress, {
+        toValue: 0,
+        duration: CLOSE_MS,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setMounted(false);
+      });
+    }
+    // Snapshot hanya diambil saat modal dibuka — sengaja tidak mengikuti
+    // perubahan props selama animasi tutup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const choose = (option: string) => {
+    // Tanda centang pindah seketika ke pilihan baru, lalu modal menutup.
+    setSnapshot((s) => ({ ...s, selectedValue: option }));
+    onSelect(option);
+    onClose();
+  };
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      {/* Backdrop blur */}
-      <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFill}>
-        <Pressable
-          className="flex-1 justify-center items-center px-6 bg-black/40"
-          onPress={onClose}
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+      {/* Style langsung pada Animated.View: NativeWind tidak menerapkan
+          className ke Animated.View bawaan RN di web. */}
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: progress }]}>
+        <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, styles.dim]} />
+      </Animated.View>
+
+      <Pressable
+        className="flex-1 justify-center items-center px-6"
+        onPress={onClose}
+        accessibilityLabel="Tutup pilihan"
+      >
+        <Animated.View
+          style={[
+            styles.card,
+            styles.shadow,
+            {
+              opacity: progress,
+              transform: [
+                { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) },
+                { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
+              ],
+            },
+          ]}
         >
-          {/* Kartu modal — NativeWind sebanyak mungkin */}
-          <Pressable
-            onPress={() => {}}
-            className="w-full max-w-[75%] bg-white rounded-2xl overflow-hidden"
-            style={styles.shadow} // ← Hanya shadow yang pakai StyleSheet
-          >
-            {/* Judul */}
+          {/* Pressable kosong menahan tap di dalam kartu supaya tidak
+              diteruskan ke latar (yang menutup modal). */}
+          <Pressable onPress={() => {}}>
             <Text className="text-base font-bold text-slate-900 text-center pt-5 pb-3.5">
-              {title}
+              {snapshot.title}
             </Text>
 
             <View className="h-px bg-slate-100 mx-4" />
 
-            {/* Pilihan */}
-            {options.map((option, index) => {
-              const isSelected = option === selectedValue;
-              const isLast = index === options.length - 1;
+            {snapshot.options.map((option, index) => {
+              const isSelected = option === snapshot.selectedValue;
+              const isLast = index === snapshot.options.length - 1;
 
               return (
                 <TouchableOpacity
                   key={option}
-                  onPress={() => {
-                    onSelect(option);
-                    onClose();
-                  }}
-                  className={`flex-row justify-between items-center px-6 py-4 active:bg-slate-50 ${
+                  onPress={() => choose(option)}
+                  className={`flex-row justify-between items-center px-6 py-4 ${
                     !isLast ? "border-b border-slate-100" : ""
                   }`}
                 >
                   <Text
-                    className={`text-base ${
-                      isSelected
-                        ? "text-blue-500 font-bold"
-                        : "text-slate-700 font-semibold"
-                    }`}
+                    className="text-base"
+                    style={{
+                      color: isSelected ? "#3B82F6" : "#334155",
+                      fontWeight: isSelected ? "700" : "600",
+                    }}
                   >
                     {option}
                   </Text>
 
-                  {isSelected && (
-                    <Ionicons name="checkmark" size={18} color="#3B82F6" />
-                  )}
+                  {isSelected && <Ionicons name="checkmark" size={18} color="#3B82F6" />}
                 </TouchableOpacity>
               );
             })}
 
-            {/* Batal */}
             <TouchableOpacity
               onPress={onClose}
-              className="items-center py-4 mt-1 border-t border-slate-100 active:bg-red-50"
+              className="items-center py-4 mt-1 border-t border-slate-100"
             >
-              <Text className="text-base font-semibold text-red-500">
-                Batal
-              </Text>
+              <Text className="text-base font-semibold text-red-500">Batal</Text>
             </TouchableOpacity>
           </Pressable>
-        </Pressable>
-      </BlurView>
+        </Animated.View>
+      </Pressable>
     </Modal>
   );
 }
@@ -194,9 +241,9 @@ export default function PreferenceCard() {
   };
 
   return (
-    <View className="bg-dark-2 w-full px-5 py-4 rounded-2xl border border-white/10">
-      <Text className="text-light-1 font-bold text-lg mb-1">
-        Preferensi Perjalanan
+    <View className="bg-surface w-full px-5 py-4 rounded-2xl border border-line">
+      <Text className="text-ink font-bold text-lg mb-1">
+        Preferensi
       </Text>
 
       <View className="w-full">
@@ -217,10 +264,7 @@ export default function PreferenceCard() {
         options={activePreference?.options ?? []}
         selectedValue={activePreference?.value ?? ""}
         onSelect={handleSelect}
-        onClose={() => {
-          setModalVisible(false);
-          setActivePreference(null);
-        }}
+        onClose={() => setModalVisible(false)}
       />
     </View>
   );
@@ -228,6 +272,14 @@ export default function PreferenceCard() {
 
 // ─── StyleSheet MINIMAL — hanya untuk yang tidak bisa NativeWind ──
 const styles = StyleSheet.create({
+  dim: { backgroundColor: "rgba(0,0,0,0.4)" },
+  card: {
+    width: "100%",
+    maxWidth: 300,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    overflow: "hidden",
+  },
   shadow: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },

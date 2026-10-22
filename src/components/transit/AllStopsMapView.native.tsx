@@ -19,6 +19,7 @@ import {
   GeoJSONSource,
   Layer,
   Map,
+  UserLocation,
   type CameraRef,
   type GeoJSONSourceRef,
 } from "@maplibre/maplibre-react-native";
@@ -32,6 +33,7 @@ import {
 } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Text from "@/components/Text";
+import StopActionButtons from "./StopActionButtons";
 import { MODE_ICON, MODE_LABEL, TransitMode } from "./transitMode";
 
 const OPENFREEMAP_DARK_STYLE = "https://tiles.openfreemap.org/styles/dark";
@@ -68,6 +70,8 @@ const UNCLUSTERED_LABEL_LAYER_ID = "allStopsUnclusteredLabel";
 interface SelectedStop {
   name: string;
   mode: TransitMode;
+  lat: number;
+  lng: number;
 }
 
 function buildGeoJson(stops: AllStopsMapViewProps["stops"]): GeoJSON.FeatureCollection {
@@ -82,7 +86,7 @@ function buildGeoJson(stops: AllStopsMapViewProps["stops"]): GeoJSON.FeatureColl
 }
 
 const AllStopsMapView = forwardRef<AllStopsMapViewHandle, AllStopsMapViewProps>(
-  ({ stops, bottomInset = 0 }, ref) => {
+  ({ stops, bottomInset = 0, userLocation }, ref) => {
   const cameraRef = useRef<CameraRef>(null);
   const sourceRef = useRef<GeoJSONSourceRef>(null);
   const [selected, setSelected] = useState<SelectedStop | null>(null);
@@ -159,6 +163,8 @@ const AllStopsMapView = forwardRef<AllStopsMapViewHandle, AllStopsMapViewProps>(
             setSelected({
               name: String(feature.properties?.name ?? "Halte"),
               mode: feature.properties?.mode as TransitMode,
+              lat: coords[1],
+              lng: coords[0],
             });
           }}
         >
@@ -167,7 +173,7 @@ const AllStopsMapView = forwardRef<AllStopsMapViewHandle, AllStopsMapViewProps>(
             type="circle"
             filter={["has", "point_count"]}
             paint={{
-              "circle-color": "#00875A",
+              "circle-color": "#018959",
               "circle-opacity": 0.85,
               "circle-stroke-width": 2,
               "circle-stroke-color": "#FFFFFF",
@@ -256,6 +262,10 @@ const AllStopsMapView = forwardRef<AllStopsMapViewHandle, AllStopsMapViewProps>(
             paint={{ "text-color": "#FFFFFF" }}
           />
         </GeoJSONSource>
+
+        {/* Dirender setelah source halte supaya titik biru tidak tertimbun
+            cluster; hanya kalau izin lokasi sudah diberikan. */}
+        {userLocation && <UserLocation animated />}
       </Map>
 
       {selected && (
@@ -264,26 +274,29 @@ const AllStopsMapView = forwardRef<AllStopsMapViewHandle, AllStopsMapViewProps>(
         // ini duduk PERSIS di atasnya dan tidak saling menimpa — bug UI
         // yang dilaporkan saat testing device fisik.
         <View style={[styles.infoCard, { bottom: 32 + bottomInset + 12 }]}>
-          <View
-            style={[styles.infoIconWrap, { backgroundColor: `${MODE_COLOR[selected.mode]}33` }]}
-          >
-            <Ionicons name={MODE_ICON[selected.mode]} size={18} color={MODE_COLOR[selected.mode]} />
+          <View style={styles.infoHeader}>
+            <View
+              style={[styles.infoIconWrap, { backgroundColor: `${MODE_COLOR[selected.mode]}33` }]}
+            >
+              <Ionicons name={MODE_ICON[selected.mode]} size={18} color={MODE_COLOR[selected.mode]} />
+            </View>
+            <View style={styles.infoTextWrap}>
+              <Text style={styles.infoTitle} numberOfLines={2}>
+                {selected.name}
+              </Text>
+              <Text style={[styles.infoMode, { color: MODE_COLOR[selected.mode] }]}>
+                {MODE_LABEL[selected.mode]}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setSelected(null)}
+              hitSlop={12}
+              accessibilityLabel="Tutup info halte"
+            >
+              <Ionicons name="close" size={18} color="#737373" />
+            </Pressable>
           </View>
-          <View style={styles.infoTextWrap}>
-            <Text style={styles.infoTitle} numberOfLines={2}>
-              {selected.name}
-            </Text>
-            <Text style={[styles.infoMode, { color: MODE_COLOR[selected.mode] }]}>
-              {MODE_LABEL[selected.mode]}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => setSelected(null)}
-            hitSlop={12}
-            accessibilityLabel="Tutup info halte"
-          >
-            <Ionicons name="close" size={18} color="#A1A1AA" />
-          </Pressable>
+          <StopActionButtons stop={selected} userLocation={userLocation ?? null} />
         </View>
       )}
     </View>
@@ -314,6 +327,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    gap: 12,
+  },
+  infoHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,

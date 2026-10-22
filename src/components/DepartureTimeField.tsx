@@ -54,18 +54,18 @@ export default function DepartureTimeField({
   const minuteInputRef = useRef<TextInput>(null);
 
   return (
-    <View className="w-full bg-dark-4 px-4 py-4 rounded-xl gap-3">
+    <View className="w-full bg-surface-2 px-4 py-4 rounded-xl gap-3">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
-          <Ionicons name="time-outline" size={19} color="#FFFFFF" />
-          <Text className="text-light-2 text-md">Waktu Berangkat</Text>
+          <Ionicons name="time-outline" size={19} color="#404040" />
+          <Text className="text-ink-2 text-md">Waktu Berangkat</Text>
         </View>
         <Pressable
           onPress={() => onChange({ ...value, enabled: !value.enabled })}
-          className={`px-3 py-1.5 rounded-full ${value.enabled ? "bg-dark-2 border border-light-3/20" : "bg-light-1"}`}
+          className={`px-3 py-1.5 rounded-full ${value.enabled ? "bg-surface border border-line" : "bg-brand-blue"}`}
         >
           <Text
-            className={`text-xs font-bold ${value.enabled ? "text-light-2" : "text-dark-1"}`}
+            className={`text-xs font-bold ${value.enabled ? "text-ink-2" : "text-white"}`}
           >
             {value.enabled ? "Sekarang" : "Atur waktu"}
           </Text>
@@ -90,23 +90,23 @@ export default function DepartureTimeField({
               }
             }}
             placeholder="07"
-            placeholderTextColor="#71717A"
+            placeholderTextColor="#737373"
             keyboardType="number-pad"
             maxLength={2}
-            className="bg-dark-2 text-light-1 font-bold text-lg text-center rounded-lg px-3 py-2 w-16"
+            className="bg-surface font-jakarta text-ink font-bold text-lg text-center rounded-lg px-3 py-2 w-16"
           />
-          <Text className="text-light-1 font-bold text-lg">:</Text>
+          <Text className="text-ink font-bold text-lg">:</Text>
           <TextInput
             ref={minuteInputRef}
             value={value.minute}
             onChangeText={(m) => onChange({ ...value, minute: onlyDigits(m, 2) })}
             placeholder="00"
-            placeholderTextColor="#71717A"
+            placeholderTextColor="#737373"
             keyboardType="number-pad"
             maxLength={2}
-            className="bg-dark-2 text-light-1 font-bold text-lg text-center rounded-lg px-3 py-2 w-16"
+            className="bg-surface font-jakarta text-ink font-bold text-lg text-center rounded-lg px-3 py-2 w-16"
           />
-          <Text className="text-light-3 text-xs ml-1">hari ini</Text>
+          <Text className="text-muted text-xs ml-1">hari ini</Text>
         </View>
       )}
     </View>

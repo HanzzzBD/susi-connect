@@ -8,7 +8,7 @@
 // maplibre-gl-leaflet yang sudah dipakai CrowdMapView.web.tsx) untuk
 // clustering sisi-client, paralel dengan clustering sisi-native
 // (GeoJSONSource cluster prop) di AllStopsMapView.native.tsx.
-import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { View } from "react-native";
 import { MODE_COLOR, MODE_LABEL, MODE_SHORT_LABEL } from "./transitMode";
 import type {
@@ -53,6 +53,8 @@ function buildMapHtml(stops: AllStopsMapViewProps["stops"]): string {
       <style>
         html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #18181B; }
         .leaflet-popup-content { font-family: sans-serif; font-size: 13px; }
+        /* Di bawah header (back + judul) DAN kolom cari halte (top 112px + ~48px). */
+        .leaflet-top.leaflet-right { top: 172px; }
         .leaflet-control-attribution {
           background: rgba(24, 24, 27, 0.75);
           color: #A1A1AA;
@@ -61,7 +63,7 @@ function buildMapHtml(stops: AllStopsMapViewProps["stops"]): string {
         .leaflet-control-attribution a { color: #D4D4D8; }
         /* Cluster bubble default plugin ini kuning/oranye terang, bentrok
            dengan tema gelap app — dicat ulang pakai warna aksen app supaya
-           konsisten dengan cluster bubble versi native (#00875A). */
+           konsisten dengan cluster bubble versi native (#018959). */
         .stop-cluster-icon {
           background: rgba(0, 135, 90, 0.85);
           border: 2px solid #FFFFFF;
@@ -92,6 +94,11 @@ function buildMapHtml(stops: AllStopsMapViewProps["stops"]): string {
           height: 100%;
           box-sizing: border-box;
         }
+        .user-dot {
+          width: 16px; height: 16px; background: #3B82F6; border-radius: 50%;
+          border: 3px solid white; box-shadow: 0 0 0 6px rgba(59,130,246,0.25);
+          box-sizing: border-box;
+        }
       </style>
     </head>
     <body>
@@ -107,9 +114,11 @@ function buildMapHtml(stops: AllStopsMapViewProps["stops"]): string {
         // terhingga — menghentikan SISA script di block ini (termasuk kode
         // pembuatan marker/cluster yang jalan setelahnya), jadi sebelum ini
         // ditambahkan peta cuma nampilkan ubin kosong tanpa satupun marker.
-        const map = L.map('map', { attributionControl: true, maxZoom: 19 }).setView(
+        const map = L.map('map', { attributionControl: true, zoomControl: false, maxZoom: 19 }).setView(
           [${JAKARTA_CENTER.lat}, ${JAKARTA_CENTER.lng}], 11
         );
+
+        L.control.zoom({ position: 'topright' }).addTo(map);
 
         L.maplibreGL({
           style: 'https://tiles.openfreemap.org/styles/dark',
@@ -162,9 +171,19 @@ function buildMapHtml(stops: AllStopsMapViewProps["stops"]): string {
 
         // Fitur cari-nama-halte (all-stops-map.tsx): pola FLY_TO postMessage
         // sama persis dengan NavigateMap.web.tsx.
+        let userMarker = null;
         window.addEventListener('message', (e) => {
-          if (!e.data || e.data.type !== 'FLY_TO') return;
-          map.flyTo([e.data.lat, e.data.lng], e.data.zoom || 16, { duration: 0.8 });
+          const d = e.data;
+          if (!d) return;
+          if (d.type === 'FLY_TO') {
+            map.flyTo([d.lat, d.lng], d.zoom || 16, { duration: 0.8 });
+          } else if (d.type === 'USER_LOCATION') {
+            const ll = [d.latitude, d.longitude];
+            if (!userMarker) {
+              const icon = L.divIcon({ html: '<div class="user-dot"></div>', className: '', iconSize: [16, 16], iconAnchor: [8, 8] });
+              userMarker = L.marker(ll, { icon, zIndexOffset: 2000, interactive: false }).addTo(map);
+            } else userMarker.setLatLng(ll);
+          }
         });
       </script>
     </body>
@@ -173,15 +192,38 @@ function buildMapHtml(stops: AllStopsMapViewProps["stops"]): string {
 }
 
 const AllStopsMapView = forwardRef<AllStopsMapViewHandle, AllStopsMapViewProps>(
-  ({ stops }, ref) => {
+  ({ stops, userLocation }, ref) => {
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+    // Dikirim ulang juga di onLoad: toggle moda memuat ulang dokumen iframe
+    // dan marker lokasi di dokumen lama ikut hilang.
+    const postUserLocation = () => {
+      if (!userLocation) return;
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: "USER_LOCATION", latitude: userLocation.latitude, longitude: userLocation.longitude },
+        "*",
+      );
+    };
+
+    useEffect(postUserLocation, [userLocation]);
+    // Target terakhir yang diminta. Memilih halte dari moda yang chip-nya
+    // masih mati akan MENYALAKAN moda itu -> daftar stops berubah -> srcDoc
+    // dibangun ulang -> dokumen iframe dimuat ULANG. Pesan FLY_TO yang
+    // dikirim tepat setelah itu sampai sebelum listener di dokumen baru
+    // terpasang, jadi hilang begitu saja dan peta tidak pernah pindah
+    // (dilaporkan user 23 Sep 2026). Targetnya disimpan lalu dikirim ulang
+    // di onLoad.
+    const pendingFly = useRef<{ lat: number; lng: number; zoom: number; at: number } | null>(null);
+
+    const postFly = (target: { lat: number; lng: number; zoom: number }) => {
+      iframeRef.current?.contentWindow?.postMessage({ type: "FLY_TO", ...target }, "*");
+    };
 
     useImperativeHandle(ref, () => ({
       flyTo: (coordinate, zoom = 16) => {
-        iframeRef.current?.contentWindow?.postMessage(
-          { type: "FLY_TO", lat: coordinate.lat, lng: coordinate.lng, zoom },
-          "*",
-        );
+        const target = { lat: coordinate.lat, lng: coordinate.lng, zoom };
+        pendingFly.current = { ...target, at: Date.now() };
+        postFly(target);
       },
     }));
 
@@ -194,6 +236,15 @@ const AllStopsMapView = forwardRef<AllStopsMapViewHandle, AllStopsMapViewProps>(
         <iframe
           ref={iframeRef as any}
           srcDoc={html}
+          onLoad={() => {
+            postUserLocation();
+            // Hanya target yang benar-benar baru (bukan sisa pencarian lama
+            // saat user cuma toggle chip moda).
+            const target = pendingFly.current;
+            if (target && Date.now() - target.at < 8000) {
+              postFly({ lat: target.lat, lng: target.lng, zoom: target.zoom });
+            }
+          }}
           style={{ width: "100%", height: "100%", border: "none", display: "block" }}
           title="Peta Semua Halte"
         />

@@ -5,7 +5,7 @@
 // haltenya, mis. dari tap marker yang sudah tampil di peta), (2) pilih
 // level kepadatan lalu submit. Struktur Modal+BlurView+Pressable-backdrop
 // mengikuti pola yang sudah ada di PreferenceCard.tsx, tapi pakai palet
-// gelap aplikasi ini (bg-dark-2/light-1) — bukan kartu putih PreferenceCard,
+// gelap aplikasi ini (bg-surface/light-1) — bukan kartu putih PreferenceCard,
 // supaya konsisten dengan layar Peta Kepadatan & hasil rute di sekitarnya.
 import { useStopSearch } from "@/hooks/useStopSearch";
 import {
@@ -110,38 +110,38 @@ export default function CrowdReportModal({
         >
           <Pressable
             onPress={() => {}}
-            className="w-full max-w-[420px] max-h-[75%] bg-dark-2 rounded-2xl overflow-hidden border border-light-3/10"
+            className="w-full max-w-[420px] max-h-[75%] bg-surface rounded-2xl overflow-hidden border border-line"
           >
             <View className="flex-row items-center justify-between px-5 pt-5 pb-3">
-              <Text className="text-light-1 font-bold text-lg">
+              <Text className="text-ink font-bold text-lg">
                 {selectedStop ? "Lapor Kepadatan" : "Cari Halte"}
               </Text>
               <Pressable onPress={onClose} hitSlop={12}>
-                <Ionicons name="close" size={22} color="#A1A1AA" />
+                <Ionicons name="close" size={22} color="#737373" />
               </Pressable>
             </View>
 
             {!selectedStop ? (
               <View className="px-5 pb-5 gap-3">
-                <View className="flex-row items-center gap-2 bg-dark-4 rounded-xl px-3 py-2.5">
-                  <Ionicons name="search" size={16} color="#71717A" />
+                <View className="flex-row items-center gap-2 bg-surface-2 rounded-xl px-3 py-2.5">
+                  <Ionicons name="search" size={16} color="#737373" />
                   <TextInput
                     value={query}
                     onChangeText={setQuery}
                     placeholder="Nama halte, mis. Kalideres"
-                    placeholderTextColor="#71717A"
+                    placeholderTextColor="#737373"
                     autoFocus
-                    className="flex-1 text-light-1 text-md"
+                    className="flex-1 font-jakarta text-ink text-md"
                   />
-                  {isLoading && <ActivityIndicator size="small" color="#00875A" />}
+                  {isLoading && <ActivityIndicator size="small" color="#018959" />}
                 </View>
 
                 {query.trim().length > 0 && query.trim().length < 3 ? (
-                  <Text className="text-light-3 text-sm text-center py-4">
+                  <Text className="text-muted text-sm text-center py-4">
                     Ketik minimal 3 karakter.
                   </Text>
                 ) : query.trim().length >= 3 && !isLoading && results.length === 0 ? (
-                  <Text className="text-light-3 text-sm text-center py-4">
+                  <Text className="text-muted text-sm text-center py-4">
                     Tidak ada halte untuk &quot;{query.trim()}&quot;
                   </Text>
                 ) : (
@@ -150,9 +150,9 @@ export default function CrowdReportModal({
                       <Pressable
                         key={`${stop.gtfsId}-${index}`}
                         onPress={() => handlePickStop(stop)}
-                        className="py-3 border-b border-light-3/10 active:bg-dark-4"
+                        className="py-3 border-b border-line active:bg-surface-2"
                       >
-                        <Text className="text-light-1 font-semibold text-md">
+                        <Text className="text-ink font-semibold text-md">
                           {stop.name}
                         </Text>
                       </Pressable>
@@ -163,8 +163,8 @@ export default function CrowdReportModal({
             ) : (
               <View className="px-5 pb-5 gap-4">
                 <View className="flex-row items-center gap-2">
-                  <Ionicons name="location" size={16} color="#FFFFFF" />
-                  <Text className="text-light-1 font-bold text-md flex-1" numberOfLines={2}>
+                  <Ionicons name="location" size={16} color="#018959" />
+                  <Text className="text-ink font-bold text-md flex-1" numberOfLines={2}>
                     {selectedStop.name}
                   </Text>
                   {!initialStop && (
@@ -176,7 +176,7 @@ export default function CrowdReportModal({
                   )}
                 </View>
 
-                <Text className="text-light-2 text-sm">
+                <Text className="text-ink-2 text-sm">
                   Seberapa padat halte ini sekarang?
                 </Text>
 
@@ -186,7 +186,7 @@ export default function CrowdReportModal({
                       key={level}
                       onPress={() => handleSubmit(level)}
                       disabled={isSubmitting}
-                      className="flex-row items-center gap-3 bg-dark-4 rounded-xl px-4 py-3.5 active:opacity-80"
+                      className="flex-row items-center gap-3 bg-surface-2 rounded-xl px-4 py-3.5 active:opacity-80"
                       style={{ opacity: isSubmitting ? 0.6 : 1 }}
                     >
                       <View
@@ -199,7 +199,7 @@ export default function CrowdReportModal({
                           borderColor: "#FFFFFF",
                         }}
                       />
-                      <Text className="text-light-1 font-semibold text-md">
+                      <Text className="text-ink font-semibold text-md">
                         {LEVEL_LABEL[level]}
                       </Text>
                     </Pressable>
@@ -208,8 +208,8 @@ export default function CrowdReportModal({
 
                 {isSubmitting && (
                   <View className="flex-row items-center justify-center gap-2 py-1">
-                    <ActivityIndicator size="small" color="#00875A" />
-                    <Text className="text-light-3 text-sm">Mengirim laporan...</Text>
+                    <ActivityIndicator size="small" color="#018959" />
+                    <Text className="text-muted text-sm">Mengirim laporan...</Text>
                   </View>
                 )}
 

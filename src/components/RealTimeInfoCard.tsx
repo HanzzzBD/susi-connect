@@ -12,16 +12,16 @@ import Text from "./Text";
 
 const RealTimeInfoCard = () => {
   return (
-    <View className="w-full bg-dark-2 rounded-2xl p-4 flex-row items-center gap-3">
-      <View className="bg-light-1/20 p-2.5 rounded-xl">
+    <View className="w-full bg-surface rounded-2xl p-4 flex-row items-center gap-3">
+      <View className="bg-brand-blue/10 p-2.5 rounded-xl">
         {/* "information-circle" (netral) dipilih ganti "warning" (segitiga
             siaga) — ikon lama sendiri turut menyiratkan "ada status
             terkini yang perlu diperhatikan", padahal ini cuma info umum. */}
-        <Ionicons name="information-circle-outline" size={30} color="#FFFFFF" />
+        <Ionicons name="information-circle-outline" size={30} color="#0F3FC1" />
       </View>
       <View className="flex-1 gap-0.5">
-        <Text className="text-light-1 font-bold text-md">Info Umum</Text>
-        <Text className="text-light-3 text-sm">
+        <Text className="text-ink font-bold text-md">Info Umum</Text>
+        <Text className="text-muted text-sm">
           Gambaran umum, bukan status langsung: KRL & TransJakarta biasanya
           lancar di jam-jam awal.
         </Text>

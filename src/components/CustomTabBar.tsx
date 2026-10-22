@@ -12,22 +12,22 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
     { active: JSX.Element; inactive: JSX.Element; label: string }
   > = {
     index: {
-      active: <Ionicons name="home" size={22} color="#FFFFFF" />,
-      inactive: <Ionicons name="home-outline" size={22} color="#94A3B8" />,
+      active: <Ionicons name="home" size={22} color="#0F3FC1" />,
+      inactive: <Ionicons name="home-outline" size={22} color="#737373" />,
       label: "Beranda",
     },
     route: {
       active: (
-        <MaterialCommunityIcons name="routes" size={22} color="#FFFFFF" />
+        <MaterialCommunityIcons name="routes" size={22} color="#0F3FC1" />
       ),
       inactive: (
-        <MaterialCommunityIcons name="routes" size={22} color="#94A3B8" />
+        <MaterialCommunityIcons name="routes" size={22} color="#737373" />
       ),
       label: "Rute",
     },
     account: {
-      active: <Ionicons name="person" size={22} color="#FFFFFF" />,
-      inactive: <Ionicons name="person-outline" size={22} color="#94A3B8" />,
+      active: <Ionicons name="person" size={22} color="#0F3FC1" />,
+      inactive: <Ionicons name="person-outline" size={22} color="#737373" />,
       label: "Akun",
     },
   };
@@ -39,7 +39,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
 
   return (
     <View className="absolute -bottom-1 left-0 right-0 items-center">
-      <View className="w-full bg-dark-2 rounded-t-3xl pt-3 pb-6 px-6 flex-row justify-around items-center shadow-lg border-t border-x border-light-3/10">
+      <View className="w-full bg-surface rounded-t-3xl pt-3 pb-6 px-6 flex-row justify-around items-center shadow-lg border-t border-x border-line">
         {filteredRoutes.map((route: any, index: number) => {
           // Cari index asli dari route untuk mengecek isFocused
           const originalIndex = state.routes.findIndex(
@@ -48,9 +48,9 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
           const isFocused = state.index === originalIndex;
 
           const item = icons[route.name] || {
-            active: <Ionicons name="ellipse" size={22} color="#FFFFFF" />,
+            active: <Ionicons name="ellipse" size={22} color="#0F3FC1" />,
             inactive: (
-              <Ionicons name="ellipse-outline" size={22} color="#94A3B8" />
+              <Ionicons name="ellipse-outline" size={22} color="#737373" />
             ),
             label: route.name,
           };
@@ -77,7 +77,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
               <Text
                 className={`text-xs mt-1 ${
                   isFocused
-                    ? "text-[#FFFFFF] font-bold"
+                    ? "text-brand-blue font-bold"
                     : "text-[#94A3B8] font-semibold"
                 }`}
               >

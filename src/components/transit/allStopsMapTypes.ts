@@ -3,6 +3,7 @@
 // Kontrak props sama untuk kedua implementasi platform AllStopsMapView (web
 // & native) — pola sama persis dengan crowd/types.ts (Task App-03).
 import { TransitStop } from "@/services/nearbyStopsService";
+import { Coordinate } from "@/utils/geocode";
 
 export interface AllStopsMapViewProps {
   /**
@@ -20,6 +21,8 @@ export interface AllStopsMapViewProps {
    * layar (4 chip bisa jadi 1 atau 2 baris).
    */
   bottomInset?: number;
+  /** Posisi GPS user; null kalau izin ditolak / belum terbaca. */
+  userLocation?: Coordinate | null;
 }
 
 /**

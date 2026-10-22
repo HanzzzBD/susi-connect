@@ -30,6 +30,22 @@ export interface BackendRouteLeg {
   route_category?: string;
   from: string;
   to: string;
+  // Data navigasi (lihat RouteLeg di skema backend).
+  from_coord?: { lat: number; lng: number };
+  to_coord?: { lat: number; lng: number };
+  headsign?: string;
+  path?: Array<[number, number]>;
+  stops_passed?: Array<{ name: string; lat: number; lng: number }>;
+  walk_steps?: Array<{
+    distance_m: number;
+    direction: string;
+    street: string;
+    lat?: number;
+    lng?: number;
+  }>;
+  depart_at?: string;
+  arrive_at?: string;
+  distance_m?: number;
 }
 
 export interface BackendRouteCandidate {
@@ -182,15 +198,37 @@ function mapCrowdLevel(
   return { current_level: typed, predicted_level: typed };
 }
 
-export function adaptToLegacyShape(rec: RouteRecommendation): ApiResponse {
+/**
+ * @param labels - nama asal/tujuan yang dipilih user. Backend hanya tahu
+ *   koordinat, jadi ujung pertama & terakhir perjalanan (serta
+ *   origin/destination.name) dari backend berupa string koordinat mentah —
+ *   diganti dengan nama ini supaya layar hasil, detail, dan navigasi
+ *   menampilkan nama tempat yang dipilih.
+ */
+export function adaptToLegacyShape(
+  rec: RouteRecommendation,
+  labels?: { origin?: string; destination?: string },
+): ApiResponse {
   const routes: RouteItem[] = rec.routes.map((candidate, index) => ({
     route_id: candidate.route_id,
     rank: index + 1, // backend sudah mengurutkan dari yang paling relevan
-    legs: candidate.legs.map<Leg>((leg) => ({
+    legs: candidate.legs.map<Leg>((leg, legIndex, legs) => ({
       mode: mapLegMode(leg),
       service: leg.route_name,
-      from: leg.from,
-      to: leg.to,
+      from: legIndex === 0 && labels?.origin ? labels.origin : leg.from,
+      to:
+        legIndex === legs.length - 1 && labels?.destination
+          ? labels.destination
+          : leg.to,
+      from_coord: leg.from_coord,
+      to_coord: leg.to_coord,
+      headsign: leg.headsign,
+      path: leg.path,
+      stops_passed: leg.stops_passed,
+      walk_steps: leg.walk_steps,
+      depart_at: leg.depart_at,
+      arrive_at: leg.arrive_at,
+      distance_m: leg.distance_m,
     })),
     travel_time_minutes: candidate.travel_time_minutes.min,
     cost_idr: candidate.cost_idr,
@@ -218,8 +256,11 @@ export function adaptToLegacyShape(rec: RouteRecommendation): ApiResponse {
   return {
     request_id: rec.request_id,
     timestamp: rec.generated_at,
-    origin: rec.origin,
-    destination: rec.destination,
+    origin: { ...rec.origin, name: labels?.origin ?? rec.origin.name },
+    destination: {
+      ...rec.destination,
+      name: labels?.destination ?? rec.destination.name,
+    },
     routes,
     departure_time: rec.departure_time,
     // Backend tidak mengirim objek `recommendation` terpisah — kandidat

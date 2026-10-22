@@ -70,6 +70,8 @@ function buildMapHtml(stops: CrowdOverviewStop[]): string {
       <style>
         html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #18181B; }
         .leaflet-popup-content { font-family: sans-serif; font-size: 13px; }
+        /* Di bawah header layar (back + judul, top 56px + tinggi ~48px). */
+        .leaflet-top.leaflet-right { top: 116px; }
         .leaflet-control-attribution {
           background: rgba(24, 24, 27, 0.75);
           color: #A1A1AA;
@@ -79,7 +81,7 @@ function buildMapHtml(stops: CrowdOverviewStop[]): string {
         .report-btn {
           margin-top: 6px;
           width: 100%;
-          background: #00875A;
+          background: #018959;
           color: #FFFFFF;
           border: none;
           border-radius: 6px;
@@ -93,7 +95,7 @@ function buildMapHtml(stops: CrowdOverviewStop[]): string {
     <body>
       <div id="map"></div>
       <script>
-        const map = L.map('map', { attributionControl: true }).setView(
+        const map = L.map('map', { attributionControl: true, zoomControl: false }).setView(
           [${fallbackCenter.lat}, ${fallbackCenter.lng}], 11
         );
 
@@ -101,6 +103,8 @@ function buildMapHtml(stops: CrowdOverviewStop[]): string {
         // which now require a key and render an "API KEY REQUIRED"
         // watermark instead of a map. Style URL mirrors the one already
         // proven working in the (shelved) dashboard's Map3DToggle.tsx.
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
         L.maplibreGL({
           style: 'https://tiles.openfreemap.org/styles/dark',
           attribution:

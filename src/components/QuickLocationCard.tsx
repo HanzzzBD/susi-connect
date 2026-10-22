@@ -28,23 +28,23 @@ export default function QuickLocationCard({
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
-      className="bg-dark-2 flex-1 rounded-2xl items-center justify-center p-5 shadow-card active:opacity-70"
+      className="bg-surface flex-1 rounded-2xl items-center justify-center p-5 shadow-card active:opacity-70"
     >
       <Ionicons
         name={iconName}
         size={24}
         // Ikon lebih redup kalau belum diisi — sinyal visual halus "tap
         // untuk atur", tanpa perlu badge/teks tambahan yang mencolok.
-        color={savedLabel ? "#FFFFFF" : "#71717A"}
+        color={savedLabel ? "#0F3FC1" : "#737373"}
       />
       <Text
-        className="text-light-1 text-md font-semibold mt-2 text-center"
+        className="text-ink text-md font-semibold mt-2 text-center"
         numberOfLines={1}
       >
         {title}
       </Text>
       <Text
-        className="text-light-3 text-[10px] text-center mt-0.5"
+        className="text-muted text-[10px] text-center mt-0.5"
         numberOfLines={1}
       >
         {savedLabel ?? "Tap untuk atur"}

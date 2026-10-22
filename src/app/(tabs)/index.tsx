@@ -1,3 +1,4 @@
+import ScreenBackground from "@/components/ScreenBackground";
 import DepartureTimeField, {
   DEFAULT_DEPARTURE_TIME,
   DepartureTimeValue,
@@ -8,9 +9,10 @@ import RealTimeInfoCard from "@/components/RealTimeInfoCard";
 import { LocationAutocompleteFieldHandle } from "@/components/LocationAutocompleteField";
 import RouteCard from "@/components/RouteCard";
 import Text from "@/components/Text";
+import TopNav from "@/components/TopNav";
 import { getCurrentLocationLabel } from "@/utils/currentLocation";
 import { buildDepartureTimeIso, validateHourMinute } from "@/utils/departureTime";
-import { PlaceSuggestion } from "@/utils/geocode";
+import { Coordinate, PlaceSuggestion } from "@/utils/geocode";
 import {
   getAllQuickLocations,
   QuickLocationSlot,
@@ -19,9 +21,16 @@ import {
   saveQuickLocation,
 } from "@/utils/quickLocations";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { parseCoordParam } from "@/utils/stopActions";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 
 // Perluasan Task App-21 (diminta user langsung): metadata per slot "Tujuan
 // Cepat" — satu sumber untuk title/icon/label dialog, dipakai baik untuk
@@ -37,10 +46,57 @@ const QUICK_LOCATION_SLOTS: {
   { slot: "rumah", title: "Rumah", iconName: "home" },
 ];
 
+// Balon ajakan di pojok kanan atas kartu TOTO; naik-turun pelan supaya
+// kelihatan tanpa mengganggu. pointerEvents none: tap tetap ke kartu.
+function AskTotoBubble() {
+  const offset = useSharedValue(0);
+  useEffect(() => {
+    offset.value = withRepeat(withTiming(-4, { duration: 900 }), -1, true);
+  }, [offset]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: offset.value }] }));
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[{ position: "absolute", top: -18, right: 14, alignItems: "flex-end" }, style]}
+    >
+      <View className="bg-[#018959] px-3 py-1.5 rounded-full flex-row items-center gap-1 shadow-md">
+        <Ionicons name="chatbubble-ellipses" size={12} color="#FFFFFF" />
+        <Text className="text-white font-bold text-xs">Ayo tanya TOTO!</Text>
+      </View>
+      <View
+        style={{
+          marginRight: 18,
+          width: 0,
+          height: 0,
+          borderLeftWidth: 6,
+          borderRightWidth: 6,
+          borderTopWidth: 7,
+          borderLeftColor: "transparent",
+          borderRightColor: "transparent",
+          borderTopColor: "#018959",
+        }}
+      />
+    </Animated.View>
+  );
+}
+
+interface PickedPlace {
+  label: string;
+  coordinate?: Coordinate;
+}
+
 export default function Index() {
   const router = useRouter();
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
+  // Koordinat PASTI untuk label yang sedang terisi (saran yang di-tap, GPS,
+  // Tujuan Cepat). Dipakai hanya kalau teks field masih persis label itu —
+  // begitu user mengetik ulang, kembali ke pencarian teks. Tanpa ini layar
+  // hasil menebak ulang koordinat dari teks, dan bisa jatuh ke tempat lain
+  // yang senama (atau ke hasil teratas Nominatim untuk label GPS).
+  const [originPick, setOriginPick] = useState<PickedPlace | null>(null);
+  const [destinationPick, setDestinationPick] = useState<PickedPlace | null>(null);
   // Perluasan Task App-21: dipakai handleQuickLocationPress untuk blur()
   // field Tujuan tepat setelah mengisinya dari luar — lihat catatan
   // lengkap di LocationAutocompleteFieldHandle soal bug yang ini perbaiki
@@ -67,13 +123,32 @@ export default function Index() {
 
     getCurrentLocationLabel().then((result) => {
       if (cancelled || !result) return;
-      setOrigin((current) => (current.trim() === "" ? result.label : current));
+      setOrigin((current) => {
+        if (current.trim() !== "") return current;
+        setOriginPick({ label: result.label, coordinate: result.coordinate });
+        return result.label;
+      });
     });
 
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // "Berangkat dari sini" (Halte Terdekat / peta halte / Asisten AI): isi
+  // "Dari" dengan halte itu beserta koordinat pastinya — titik berangkat
+  // tepat di halte memberi hasil pencarian rute paling lengkap. Menimpa
+  // isian GPS di atas karena ini pilihan eksplisit user.
+  const { fromStop, fromStopCoord } = useLocalSearchParams<{
+    fromStop?: string;
+    fromStopCoord?: string;
+  }>();
+  useEffect(() => {
+    const coordinate = parseCoordParam(fromStopCoord);
+    if (!fromStop || !coordinate) return;
+    setOrigin(fromStop);
+    setOriginPick({ label: fromStop, coordinate });
+  }, [fromStop, fromStopCoord]);
 
   // Perluasan Task App-21 (diminta user langsung): "Tujuan Cepat" yang
   // sebelumnya murni dekoratif (onPress tidak pernah diisi) — sekarang bisa
@@ -103,6 +178,7 @@ export default function Index() {
       // Terbaik" sendiri (konsisten dengan alur pencarian yang sudah ada,
       // tidak ada navigasi otomatis yang mengejutkan).
       setDestination(saved.label);
+      setDestinationPick({ label: saved.label, coordinate: saved.coordinate });
       // Bug dilaporkan dari device fisik: kalau field Tujuan kebetulan
       // masih fokus dari interaksi sebelumnya, mengisinya dari sini
       // memicu keyboard muncul + pencarian otomatis atas nama lokasi
@@ -148,6 +224,15 @@ export default function Index() {
     setActivePickerSlot(null);
   };
 
+  // Tombol tukar di tengah kartu: asal <-> tujuan, berikut koordinat pasti
+  // masing-masing (kalau ada) supaya hasil pencarian tetap presisi.
+  const handleSwap = () => {
+    setOrigin(destination);
+    setDestination(origin);
+    setOriginPick(destinationPick);
+    setDestinationPick(originPick);
+  };
+
   // Task Integration-01: sebelumnya tombol ini tidak melakukan apa-apa
   // (mockApiResponse langsung dipakai statis di layar hasil rute). Sekarang
   // asal/tujuan nyata dikirim sebagai search params ke /route, yang
@@ -180,21 +265,30 @@ export default function Index() {
       );
     }
 
+    const coordParam = (pick: PickedPlace | null, text: string) =>
+      pick && pick.label.trim() === text.trim() && pick.coordinate
+        ? `${pick.coordinate.latitude},${pick.coordinate.longitude}`
+        : undefined;
+    const originCoord = coordParam(originPick, origin);
+    const destinationCoord = coordParam(destinationPick, destination);
+
     router.push({
       pathname: "/route",
       params: {
         origin: origin.trim(),
         destination: destination.trim(),
+        ...(originCoord ? { originCoord } : {}),
+        ...(destinationCoord ? { destinationCoord } : {}),
         ...(departureTimeIso ? { departureTime: departureTimeIso } : {}),
       },
     });
   };
 
   return (
-    <View className="flex-1 bg-[#18181B]">
+    <ScreenBackground>
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 items-center gap-6 pt-14 pb-28"
+        contentContainerClassName="px-5 items-center gap-6 pt-12 pb-28"
         showsVerticalScrollIndicator={false}
         // Task App-09: tanpa ini, default RN ("never") membuat ScrollView
         // MENYERAP tap di luar TextInput yang sedang fokus untuk menutup
@@ -207,12 +301,16 @@ export default function Index() {
         // tetap terbuka; kalau tidak kena apa-apa, tetap tutup seperti biasa.
         keyboardShouldPersistTaps="handled"
       >
-        {/* Greetings */}
+        <View className="w-full">
+          <TopNav />
+        </View>
+
+        {/* Greetings — di atas latar biru malam, jadi putih. */}
         <View className="gap-2.5">
-          <Text className="text-4xl font-bold text-light-1 text-center">
+          <Text className="text-4xl font-bold text-white text-center">
             SmartRoute AI
           </Text>
-          <Text className="text-light-2 text-center">
+          <Text className="text-center" style={{ color: "#F4F4F0" }}>
             Hai, Selamat Pagi!{"\n"}Mau ke mana hari ini?
           </Text>
         </View>
@@ -224,6 +322,13 @@ export default function Index() {
           onOriginChange={setOrigin}
           onDestinationChange={setDestination}
           destinationFieldRef={destinationFieldRef}
+          onOriginSelect={(s) =>
+            setOriginPick({ label: s.displayName, coordinate: s.coordinate })
+          }
+          onDestinationSelect={(s) =>
+            setDestinationPick({ label: s.displayName, coordinate: s.coordinate })
+          }
+          onSwap={handleSwap}
         />
 
         {/* Task App-08: kunci waktu keberangkatan (rehearsal/demo) */}
@@ -232,10 +337,10 @@ export default function Index() {
         {/* Tombol Action Utama */}
         <Pressable
           onPress={handleSearch}
-          className="w-full bg-[#00875A] py-3.5 rounded-2xl flex-row items-center justify-center gap-2 active:opacity-80"
+          className="w-full bg-[#018959] py-3.5 rounded-2xl flex-row items-center justify-center gap-2 active:opacity-80"
         >
           <Ionicons name="search" size={20} color="#FFFFFF" />
-          <Text className="text-light-1 font-bold text-md">
+          <Text className="text-white font-bold text-md">
             Cari Rute Terbaik
           </Text>
         </Pressable>
@@ -243,20 +348,20 @@ export default function Index() {
         {/* Task App-01: entry point ke layar peta kepadatan (web-only) */}
         <Pressable
           onPress={() => router.push("/crowd-map")}
-          className="w-full bg-dark-2 rounded-2xl p-4 flex-row items-center gap-3 active:opacity-80 border border-light-3/10"
+          className="w-full bg-surface rounded-2xl p-4 flex-row items-center gap-3 active:opacity-80 border border-line"
         >
-          <View className="bg-light-1/20 p-2.5 rounded-xl">
-            <Ionicons name="map" size={24} color="#FFFFFF" />
+          <View className="bg-brand-blue/10 p-2.5 rounded-xl">
+            <Ionicons name="map" size={24} color="#0F3FC1" />
           </View>
           <View className="flex-1 gap-0.5">
-            <Text className="text-light-1 font-bold text-md">
+            <Text className="text-ink font-bold text-md">
               Peta Kepadatan
             </Text>
-            <Text className="text-light-3 text-sm">
+            <Text className="text-muted text-sm">
               Lihat halte yang lagi padat, berdasar laporan pengguna lain.
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#71717A" />
+          <Ionicons name="chevron-forward" size={18} color="#737373" />
         </Pressable>
 
         {/* Task App-15: entry point ke layar "Halte Terdekat" — fitur info
@@ -264,47 +369,43 @@ export default function Index() {
             atas (batasan eksplisit task), mirip pola kartu Peta Kepadatan. */}
         <Pressable
           onPress={() => router.push("/nearby-stops")}
-          className="w-full bg-dark-2 rounded-2xl p-4 flex-row items-center gap-3 active:opacity-80 border border-light-3/10"
+          className="w-full bg-surface rounded-2xl p-4 flex-row items-center gap-3 active:opacity-80 border border-line"
         >
-          <View className="bg-light-1/20 p-2.5 rounded-xl">
-            <Ionicons name="navigate" size={24} color="#FFFFFF" />
+          <View className="bg-brand-blue/10 p-2.5 rounded-xl">
+            <Ionicons name="navigate" size={24} color="#0F3FC1" />
           </View>
           <View className="flex-1 gap-0.5">
-            <Text className="text-light-1 font-bold text-md">
+            <Text className="text-ink font-bold text-md">
               Halte Terdekat
             </Text>
-            <Text className="text-light-3 text-sm">
+            <Text className="text-muted text-sm">
               Cari halte TransJakarta, MRT, LRT, & JakLingko di sekitarmu.
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#71717A" />
+          <Ionicons name="chevron-forward" size={18} color="#737373" />
         </Pressable>
 
-        {/* Task App-22: entry point ke layar Asisten AI — fitur info
-            berdiri sendiri (chat wayfinding), mirip pola kartu Peta
-            Kepadatan/Halte Terdekat di atas, bukan bagian dari alur
-            cari-rute. */}
+        {/* Task App-22: entry point ke TOTO (Asisten AI). */}
         <Pressable
           onPress={() => router.push("/assistant")}
-          className="w-full bg-dark-2 rounded-2xl p-4 flex-row items-center gap-3 active:opacity-80 border border-light-3/10"
+          className="w-full bg-surface rounded-2xl p-4 flex-row items-center gap-3 active:opacity-80 border border-line relative"
         >
-          <View className="bg-light-1/20 p-2.5 rounded-xl">
-            <Ionicons name="chatbubble-ellipses" size={24} color="#FFFFFF" />
+          <View className="bg-primary-emerald/15 p-2.5 rounded-xl">
+            <Ionicons name="sparkles" size={24} color="#018959" />
           </View>
           <View className="flex-1 gap-0.5">
-            <Text className="text-light-1 font-bold text-md">
-              Asisten AI
-            </Text>
-            <Text className="text-light-3 text-sm">
-              Tanya seputar rute & tarif TransJakarta, dijawab dari data GTFS asli.
+            <Text className="text-ink font-bold text-md">TOTO · Asisten AI</Text>
+            <Text className="text-muted text-sm">
+              Tanya halte terdekat, rute, & tarif — dijawab dari data transit asli.
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#71717A" />
+          <Ionicons name="chevron-forward" size={18} color="#737373" />
+          <AskTotoBubble />
         </Pressable>
 
         {/* Tujuan Cepat */}
         <View className="gap-4 w-full">
-          <Text className="text-md w-full text-left text-light-1 font-bold">
+          <Text className="text-md w-full text-left text-white font-bold">
             Tujuan Cepat
           </Text>
           <View className="flex-row gap-4">
@@ -323,7 +424,7 @@ export default function Index() {
 
         {/* Info Real Time */}
         <View className="gap-4 w-full">
-          <Text className="text-md w-full text-left text-light-1 font-bold">
+          <Text className="text-md w-full text-left text-white font-bold">
             Informasi
           </Text>
           <View className="gap-4">
@@ -345,6 +446,6 @@ export default function Index() {
         onClose={() => setActivePickerSlot(null)}
         onSelect={handlePickerSelect}
       />
-    </View>
+    </ScreenBackground>
   );
 }

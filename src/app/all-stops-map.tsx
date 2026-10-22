@@ -4,8 +4,9 @@
 // tertulis): peta SEMUA halte/stasiun 4 moda se-Jakarta (bisa ribuan titik),
 // dari GET /all-stops (backend/backend-skeleton/src/routes/allStops.ts).
 // BEDA dari nearby-stops.tsx: layar itu selalu berbasis "terdekat dari GPS
-// saya" (maks 30 titik, radius 1.5-5km) — layar ini tidak butuh GPS sama
-// sekali, cuma gambaran keseluruhan cakupan transit se-Jakarta. Fitur
+// saya" (maks 30 titik, radius 1.5-5km) — layar ini gambaran keseluruhan
+// cakupan transit se-Jakarta; GPS cuma dipakai untuk menandai posisi user
+// di peta (opsional, peta tetap jalan kalau izin ditolak). Fitur
 // informasi berdiri sendiri juga (sama batasan App-15) — tidak menyentuh
 // alur cari-rute.
 import Text from "@/components/Text";
@@ -22,11 +23,14 @@ import {
   TransitStop,
   fetchAllStops,
 } from "@/services/nearbyStopsService";
+import { getCurrentCoordinate } from "@/utils/currentLocation";
+import { Coordinate } from "@/utils/geocode";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   TextInput,
@@ -48,12 +52,12 @@ function ScreenHeader({ title }: { title: string }) {
     <View className="absolute top-14 left-5 right-5 flex-row items-center gap-3 z-10">
       <Pressable
         onPress={() => router.back()}
-        className="bg-dark-2 p-3 rounded-full shadow-md"
+        className="bg-surface p-3 rounded-full shadow-md"
       >
-        <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+        <Ionicons name="arrow-back" size={20} color="#0A0A0A" />
       </Pressable>
-      <View className="bg-dark-2/95 px-4 py-2.5 rounded-full">
-        <Text className="text-light-1 font-bold text-sm">{title}</Text>
+      <View className="bg-surface/95 px-4 py-2.5 rounded-full">
+        <Text className="text-ink font-bold text-sm">{title}</Text>
       </View>
     </View>
   );
@@ -83,11 +87,11 @@ function ModeToggleChip({
       <Ionicons
         name={MODE_ICON[mode]}
         size={14}
-        color={active ? MODE_COLOR[mode] : "#71717A"}
+        color={active ? MODE_COLOR[mode] : "#737373"}
       />
       <Text
         className="text-xs font-bold"
-        style={{ color: active ? MODE_COLOR[mode] : "#71717A" }}
+        style={{ color: active ? MODE_COLOR[mode] : "#737373" }}
       >
         {MODE_LABEL[mode]} ({count})
       </Text>
@@ -104,12 +108,18 @@ function SearchResultRow({
 }) {
   return (
     <Pressable
-      onPress={onPress}
-      className="flex-row items-center gap-2.5 px-4 py-3 active:bg-dark-4 border-b border-light-3/10 last:border-b-0"
+      // onPressIn, bukan onPress: di HP jeda antara jari menyentuh dan
+      // melepas bisa lebih lama dari timer blur field pencarian, sehingga
+      // baris ini keburu hilang dan pilihan tidak pernah terbaca — peta
+      // lalu terlihat "tidak mengarah ke halte" (dilaporkan 23 Sep 2026).
+      // Sama dengan perbaikan di LocationAutocompleteField.
+      onPressIn={onPress}
+      onPress={() => {}}
+      className="flex-row items-center gap-2.5 px-4 py-3 active:bg-surface-2 border-b border-line last:border-b-0"
     >
       <Ionicons name={MODE_ICON[stop.mode]} size={16} color={MODE_COLOR[stop.mode]} />
       <View className="flex-1">
-        <Text className="text-light-1 font-bold text-sm" numberOfLines={1}>
+        <Text className="text-ink font-bold text-sm" numberOfLines={1}>
           {stop.name}
         </Text>
       </View>
@@ -121,6 +131,16 @@ function SearchResultRow({
 }
 
 export default function AllStopsMapScreen() {
+  // Diisi kalau layar ini dibuka dari daftar "Halte Terdekat" (ketuk salah
+  // satu halte) — lihat efek fokus di bawah.
+  const { focusLat, focusLng, focusMode, focusName, fromLat, fromLng } = useLocalSearchParams<{
+    focusLat?: string;
+    focusLng?: string;
+    fromLat?: string;
+    fromLng?: string;
+    focusMode?: string;
+    focusName?: string;
+  }>();
   const [state, setState] = useState<LoadState>({ status: "loading" });
   // Default: JakLingko dimatikan — 7215 dari 7829 titik total (lihat
   // Task Backend-09/App-15), langsung tampil semua sejak awal bikin peta
@@ -195,8 +215,43 @@ export default function AllStopsMapScreen() {
   const searchResults = useMemo(() => {
     if (state.status !== "success" || trimmedQuery.length < MIN_SEARCH_LENGTH) return [];
     const needle = trimmedQuery.toLowerCase();
+    // BUG (dilaporkan user: cari "bundaran" cuma memunculkan JakLingko):
+    // dulu hasil dipotong 8 teratas sesuai URUTAN DATA, dan titik JakLingko
+    // (7215 dari 7838) hampir selalu memenuhi kuota lebih dulu — "Bundaran
+    // HI" (MRT) & "Bundaran HI Astra" (TransJakarta) yang ada di data tidak
+    // pernah kebagian slot. Sekarang diurutkan dulu: yang namanya PERSIS/
+    // berawalan kata kunci menang, lalu halte besar (BRT/MRT/LRT) sebelum
+    // titik mikrotrans, baru nama terpendek. Peron duplikat (nama+moda sama)
+    // dibuang supaya satu halte tidak memakan banyak baris.
+    const matchRank = (name: string) => {
+      const n = name.toLowerCase();
+      if (n === needle) return 0;
+      if (n.startsWith(needle)) return 1;
+      if (n.split(/\s+/).some((w) => w.startsWith(needle))) return 2;
+      return 3;
+    };
+    const modeRank: Record<TransitMode, number> = {
+      transjakarta: 0,
+      mrt: 0,
+      lrt: 0,
+      jaklingko: 1,
+    };
+    const seen = new Set<string>();
     return state.stops
       .filter((s) => s.name.toLowerCase().includes(needle))
+      .sort(
+        (a, b) =>
+          matchRank(a.name) - matchRank(b.name) ||
+          modeRank[a.mode] - modeRank[b.mode] ||
+          a.name.length - b.name.length ||
+          a.name.localeCompare(b.name),
+      )
+      .filter((s) => {
+        const key = `${s.mode}|${s.name.toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
       .slice(0, MAX_SEARCH_RESULTS);
   }, [state, trimmedQuery]);
 
@@ -217,18 +272,132 @@ export default function AllStopsMapScreen() {
   // memanggil flyTo lewat useEffect SETELAH activeModes benar-benar berisi
   // moda itu (yang berarti filteredStops/geojson di AllStopsMapView sudah
   // ikut re-render dengan titik yang dicari).
+  // mode kosong = bukan halte (mis. posisi GPS user), tidak perlu menunggu
+  // chip moda mana pun menyala.
   const [pendingFlyTarget, setPendingFlyTarget] = useState<{
     lat: number;
     lng: number;
-    mode: TransitMode;
+    mode?: TransitMode;
+    zoom?: number;
   } | null>(null);
 
   useEffect(() => {
     if (!pendingFlyTarget) return;
-    if (!activeModes.has(pendingFlyTarget.mode)) return;
-    mapRef.current?.flyTo({ lat: pendingFlyTarget.lat, lng: pendingFlyTarget.lng }, 17);
-    setPendingFlyTarget(null);
+    if (pendingFlyTarget.mode && !activeModes.has(pendingFlyTarget.mode)) return;
+    // Peta bisa saja belum selesai dipasang saat target datang dari layar
+    // lain (lihat efek fokus di bawah) — ref-nya masih null. Dicoba ulang
+    // beberapa kali, bukan sekali lalu menyerah diam-diam.
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const attempt = () => {
+      if (mapRef.current) {
+        mapRef.current.flyTo(
+          { lat: pendingFlyTarget.lat, lng: pendingFlyTarget.lng },
+          pendingFlyTarget.zoom ?? 17,
+        );
+        setPendingFlyTarget(null);
+        return;
+      }
+      if (++tries < 10) timer = setTimeout(attempt, 300);
+    };
+    timer = setTimeout(attempt, 0);
+    return () => clearTimeout(timer);
   }, [pendingFlyTarget, activeModes]);
+
+  // Dibuka dari layar "Halte Terdekat" dengan satu halte yang dituju: begitu
+  // data halte siap, nyalakan modanya lalu terbang ke titiknya — sama persis
+  // dengan memilih hasil pencarian di layar ini.
+  // Titik asal dari layar Halte Terdekat (GPS asli atau lokasi uji yang
+  // sedang dipakai di sana). Kalau ada, inilah "lokasi saya" di peta ini —
+  // bukan GPS dibaca ulang, supaya konsisten dengan daftar yang barusan
+  // dilihat user.
+  const originFromParams = useMemo<Coordinate | null>(() => {
+    const la = Number(fromLat);
+    const ln = Number(fromLng);
+    return fromLat && fromLng && Number.isFinite(la) && Number.isFinite(ln)
+      ? { latitude: la, longitude: ln }
+      : null;
+  }, [fromLat, fromLng]);
+
+  const focusHandledRef = useRef(false);
+  const [showFocusBanner, setShowFocusBanner] = useState(true);
+  useEffect(() => {
+    if (focusHandledRef.current || state.status !== "success") return;
+    const lat = Number(focusLat);
+    const lng = Number(focusLng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const mode = ALL_MODES.includes(focusMode as TransitMode)
+      ? (focusMode as TransitMode)
+      : "transjakarta";
+    focusHandledRef.current = true;
+    setActiveModes((current) => {
+      if (current.has(mode)) return current;
+      const next = new Set(current);
+      next.add(mode);
+      return next;
+    });
+    // Lokasi user (dari layar Halte Terdekat) ikut masuk bingkai: kamera
+    // diarahkan ke titik tengah keduanya dengan zoom sesuai jaraknya, bukan
+    // zoom dekat ke halte saja yang membuat titik "saya" keluar layar.
+    const from = originFromParams;
+    if (from) {
+      const dLat = (lat - from.latitude) * 111_000;
+      const dLng = (lng - from.longitude) * 110_000;
+      const dist = Math.max(150, Math.hypot(dLat, dLng));
+      const zoom = Math.min(17, Math.max(11, 16.5 - Math.log2(dist / 150)));
+      setPendingFlyTarget({
+        lat: (lat + from.latitude) / 2,
+        lng: (lng + from.longitude) / 2,
+        mode,
+        zoom,
+      });
+    } else {
+      setPendingFlyTarget({ lat, lng, mode });
+    }
+  }, [state.status, focusLat, focusLng, focusMode, originFromParams]);
+
+  const [userLocation, setUserLocation] = useState<Coordinate | null>(
+    () => originFromParams,
+  );
+  const [isLocating, setIsLocating] = useState(false);
+
+  const locateUser = useCallback(async () => {
+    setIsLocating(true);
+    const coordinate = await getCurrentCoordinate();
+    setIsLocating(false);
+    if (coordinate) setUserLocation(coordinate);
+    return coordinate;
+  }, []);
+
+  useEffect(() => {
+    // Sudah punya titik asal dari Halte Terdekat -> jangan ditimpa GPS
+    // (bisa beda kalau di sana sedang pakai lokasi uji). Tombol lokasi
+    // tetap bisa dipakai untuk membaca GPS asli.
+    if (originFromParams) return;
+    locateUser();
+  }, [locateUser, originFromParams]);
+
+  // Sekali saja saat GPS pertama terbaca, dan tidak kalau layar dibuka untuk
+  // fokus ke satu halte (dari "Halte Terdekat") — itu yang lebih penting.
+  const autoCenteredRef = useRef(false);
+  useEffect(() => {
+    if (autoCenteredRef.current || state.status !== "success" || !userLocation) return;
+    autoCenteredRef.current = true;
+    if (focusLat && focusLng) return;
+    setPendingFlyTarget({ lat: userLocation.latitude, lng: userLocation.longitude, zoom: 15 });
+  }, [state.status, userLocation, focusLat, focusLng]);
+
+  const handleLocatePress = async () => {
+    const coordinate = await locateUser();
+    if (!coordinate) {
+      Alert.alert(
+        "Lokasi tidak tersedia",
+        "Aktifkan izin lokasi dan GPS untuk melihat posisimu di peta.",
+      );
+      return;
+    }
+    setPendingFlyTarget({ lat: coordinate.latitude, lng: coordinate.longitude, zoom: 16 });
+  };
 
   const handleSelectResult = (stop: TransitStop) => {
     clearBlurTimeout();
@@ -266,20 +435,20 @@ export default function AllStopsMapScreen() {
 
       {state.status === "loading" ? (
         <View className="flex-1 items-center justify-center gap-3">
-          <ActivityIndicator size="large" color="#00875A" />
-          <Text className="text-light-2 text-sm">Memuat data halte se-Jakarta...</Text>
+          <ActivityIndicator size="large" color="#018959" />
+          <Text className="text-surface-2 text-sm">Memuat data halte se-Jakarta...</Text>
         </View>
       ) : state.status === "error" ? (
         <View className="flex-1 items-center justify-center gap-3 px-8">
           <Ionicons name="warning-outline" size={40} color="#EF4444" />
-          <Text className="text-light-1 text-center font-bold">
+          <Text className="text-white text-center font-bold">
             {state.message}
           </Text>
           <Pressable
             onPress={load}
-            className="bg-light-1 px-5 py-2.5 rounded-xl mt-2"
+            className="bg-brand-blue px-5 py-2.5 rounded-xl mt-2"
           >
-            <Text className="text-dark-1 font-bold">Coba Lagi</Text>
+            <Text className="text-white font-bold">Coba Lagi</Text>
           </Pressable>
         </View>
       ) : (
@@ -288,11 +457,13 @@ export default function AllStopsMapScreen() {
             ref={mapRef}
             stops={filteredStops}
             bottomInset={chipsHeight}
+            userLocation={userLocation}
           />
 
           <View className="absolute top-28 left-5 right-5 z-10">
-            <View className="flex-row items-center gap-2 bg-dark-2/95 px-4 py-3 rounded-full">
-              <Ionicons name="search" size={16} color="#71717A" />
+            <View className="flex-row items-center gap-2">
+            <View className="flex-1 flex-row items-center gap-2 bg-surface/95 px-4 py-3 rounded-full">
+              <Ionicons name="search" size={16} color="#737373" />
               <TextInput
                 ref={searchInputRef}
                 value={searchQuery}
@@ -311,8 +482,8 @@ export default function AllStopsMapScreen() {
                   blurTimeoutRef.current = setTimeout(() => setIsSearchFocused(false), 150);
                 }}
                 placeholder="Cari nama halte..."
-                placeholderTextColor="#71717A"
-                className="flex-1 text-light-1 font-bold text-sm"
+                placeholderTextColor="#737373"
+                className="flex-1 font-jakarta text-ink font-bold text-sm"
               />
               {searchQuery.length > 0 && (
                 <Pressable
@@ -326,16 +497,34 @@ export default function AllStopsMapScreen() {
                   hitSlop={8}
                   accessibilityLabel="Hapus pencarian"
                 >
-                  <Ionicons name="close-circle" size={18} color="#71717A" />
+                  <Ionicons name="close-circle" size={18} color="#737373" />
                 </Pressable>
               )}
             </View>
+            <Pressable
+              onPress={handleLocatePress}
+              disabled={isLocating}
+              accessibilityRole="button"
+              accessibilityLabel="Tampilkan lokasi saya"
+              className="bg-surface p-3 rounded-full shadow-md"
+            >
+              {isLocating ? (
+                <ActivityIndicator size="small" color="#3B82F6" />
+              ) : (
+                <Ionicons
+                  name={userLocation ? "locate" : "locate-outline"}
+                  size={20}
+                  color="#3B82F6"
+                />
+              )}
+            </Pressable>
+            </View>
 
             {showSearchDropdown && (
-              <View className="mt-2 bg-dark-2 border border-light-3/15 rounded-xl overflow-hidden max-h-80">
+              <View className="mt-2 bg-surface border border-line rounded-xl overflow-hidden max-h-80">
                 {searchResults.length === 0 ? (
                   <View className="px-4 py-3">
-                    <Text className="text-light-3 text-sm">
+                    <Text className="text-muted text-sm">
                       Tidak ada halte bernama &quot;{trimmedQuery}&quot;
                     </Text>
                   </View>
@@ -364,6 +553,25 @@ export default function AllStopsMapScreen() {
                     ))}
                   </ScrollView>
                 )}
+              </View>
+            )}
+
+            {/* Penanda halte yang dituju saat layar ini dibuka dari daftar
+                "Halte Terdekat" — supaya jelas titik mana yang dikejar
+                kamera di antara ribuan titik lain. */}
+            {focusName && showFocusBanner && !showSearchDropdown && (
+              <View className="mt-2 flex-row items-center gap-2 bg-surface px-4 py-2.5 rounded-full border border-line self-start max-w-full">
+                <Ionicons name="location" size={14} color="#018959" />
+                <Text className="text-ink text-xs font-bold flex-shrink" numberOfLines={1}>
+                  {focusName}
+                </Text>
+                <Pressable
+                  onPress={() => setShowFocusBanner(false)}
+                  hitSlop={8}
+                  accessibilityLabel="Tutup penanda halte"
+                >
+                  <Ionicons name="close" size={14} color="#737373" />
+                </Pressable>
               </View>
             )}
           </View>

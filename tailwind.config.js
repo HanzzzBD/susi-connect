@@ -4,7 +4,25 @@ module.exports = {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
+      // Font app (variable font, dimuat di app/_layout.tsx). Dipakai untuk
+      // TextInput — komponen Text app sudah memasangnya sendiri.
+      fontFamily: { jakarta: ["Plus-Jakarta-Sans"] },
       colors: {
+        // 0. Palet desain (Figma "Collection 1", 22 Sep 2026). Permukaan kartu
+        //    memakai Light / Light Gelap 1 / Light Gelap 2 sebagai pengganti
+        //    abu gelap lama (dark-2/dark-4); teks di atasnya ink/ink-2/muted.
+        surface: { DEFAULT: "#F8FAFC", 2: "#F4F4F0" }, // Light, Light Gelap 1
+        line: "#D4D4D4", // Light Gelap 2 — garis, pembatas, elemen non-aktif
+        muted: "#737373", // Light Gelap 3 — teks sekunder
+        ink: { DEFAULT: "#0A0A0A", 2: "#404040" }, // Dark, Dark Terang
+        brand: {
+          blue: "#0F3FC1", // Primary 1
+          "blue-dark": "#0F3F80", // Primary 1 Gelap
+          green: "#018959", // Primary 2
+          "green-light": "#AAE3BA", // Primary 2 Terang
+          orange: "#FC9D33", // Accent
+        },
+
         // 1. Dark (Kontras Tinggi: Sangat Gelap -> Gelap -> Sedang)
         dark: {
           1: "#18181B", // Zinc-900 → Teks gelap (soft black, bukan pure black)

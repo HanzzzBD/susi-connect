@@ -1,20 +1,50 @@
 // src/app/route/[id].tsx
 import InfoCard from "@/components/InfoCard";
 import RouteDetailCard from "@/components/RouteDetailCard";
+import ScreenBackground from "@/components/ScreenBackground";
 import Text from "@/components/Text";
+import TopNav from "@/components/TopNav";
 import { RouteItem } from "@/type";
 import { formatRupiah } from "@/utils/currency";
 import { formatDepartureLabel } from "@/utils/departureTime";
+import { getRoute } from "@/services/routeStore";
+import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 
 export default function RouteDetailScreen() {
-  const { data, origin } = useLocalSearchParams<{
-    data: string;
-    origin: string;
-  }>();
-  const routeData: RouteItem = JSON.parse(data);
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const stored = getRoute(id);
   const router = useRouter();
+
+  // Tombol back sendiri (sebelumnya cuma bisa lewat tombol back HP). Kalau
+  // layar ini dibuka tanpa riwayat (mis. web dimuat ulang), kembali ke
+  // daftar hasil.
+  const goBack = () =>
+    router.canGoBack() ? router.back() : router.navigate("/route");
+
+  if (!stored) {
+    // routeStore kosong setelah app/tab dimuat ulang — lihat routeStore.ts.
+    return (
+      <ScreenBackground className="items-center justify-center gap-3 px-8">
+        <Ionicons name="refresh-circle-outline" size={40} color="#737373" />
+        <Text className="text-white text-center font-bold">
+          Data rute sudah tidak tersedia
+        </Text>
+        <Text className="text-line text-center text-sm">
+          Cari ulang rute dari Beranda.
+        </Text>
+        <Pressable
+          onPress={() => router.navigate("/")}
+          className="bg-brand-blue px-5 py-2.5 rounded-xl mt-2"
+        >
+          <Text className="text-white font-bold">Ke Beranda</Text>
+        </Pressable>
+      </ScreenBackground>
+    );
+  }
+  const routeData: RouteItem = stored.route;
+  const origin = stored.originName;
 
   // comfort_score, reliability, dan crowd bisa undefined — backend belum
   // mengisinya (Task Backend-04/05) atau field itu memang tidak ada di
@@ -35,10 +65,24 @@ export default function RouteDetailScreen() {
     : null;
 
   return (
-    <View className="flex-1 bg-[#18181B]">
-      <ScrollView contentContainerClassName="px-5 pt-14 pb-28 gap-6">
+    <ScreenBackground>
+      <ScrollView contentContainerClassName="px-5 pt-12 pb-28 gap-6">
         {/* Header Info */}
-        <View className="gap-1">
+        <View className="gap-3">
+          <TopNav />
+          <View className="flex-row items-center gap-3">
+            <Pressable
+              onPress={goBack}
+              accessibilityRole="button"
+              accessibilityLabel="Kembali ke hasil rute"
+              className="bg-surface p-2.5 rounded-full border border-line"
+            >
+              <Ionicons name="arrow-back" size={20} color="#0A0A0A" />
+            </Pressable>
+            <Text className="text-2xl font-bold text-white">
+              Detail Perjalanan
+            </Text>
+          </View>
           <View className="flex-row items-center gap-2">
             {routeData.crowd ? (
               <View
@@ -51,19 +95,16 @@ export default function RouteDetailScreen() {
                 </Text>
               </View>
             ) : (
-              <View className="px-2 py-0.5 rounded bg-light-3/10">
-                <Text className="text-xs font-bold text-light-3">
+              <View className="px-2 py-0.5 rounded bg-line">
+                <Text className="text-xs font-bold text-muted">
                   Data crowd belum tersedia
                 </Text>
               </View>
             )}
-            <Text className="text-light-3 text-xs">
+            <Text className="text-muted text-xs">
               ID: {routeData.route_id}
             </Text>
           </View>
-          <Text className="text-2xl font-bold text-light-1">
-            Detail Perjalanan
-          </Text>
         </View>
 
         <RouteDetailCard item={routeData} originName={origin} />
@@ -76,16 +117,16 @@ export default function RouteDetailScreen() {
         </View>
 
         {/* Scores */}
-        <View className="bg-dark-2 p-4 rounded-xl gap-4 border border-light-3/5">
+        <View className="bg-surface p-4 rounded-xl gap-4 border border-line">
           <View className="gap-2">
             <View className="flex-row justify-between">
-              <Text className="text-light-2 text-sm">Tingkat Kenyamanan</Text>
-              <Text className="text-light-1 text-sm font-bold">
+              <Text className="text-ink-2 text-sm">Tingkat Kenyamanan</Text>
+              <Text className="text-ink text-sm font-bold">
                 {comfortPercent != null ? `${comfortPercent}%` : "Data belum tersedia"}
               </Text>
             </View>
             {comfortPercent != null && (
-              <View className="h-1.5 bg-dark-4 rounded-full overflow-hidden">
+              <View className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
                 <View
                   className="h-full bg-blue-500 rounded-full"
                   style={{ width: `${comfortPercent}%` }}
@@ -96,15 +137,15 @@ export default function RouteDetailScreen() {
 
           <View className="gap-2">
             <View className="flex-row justify-between">
-              <Text className="text-light-2 text-sm">
+              <Text className="text-ink-2 text-sm">
                 Reliabilitas (Tepat Waktu)
               </Text>
-              <Text className="text-light-1 text-sm font-bold">
+              <Text className="text-ink text-sm font-bold">
                 {reliabilityPercent != null ? `${reliabilityPercent}%` : "Data belum tersedia"}
               </Text>
             </View>
             {reliabilityPercent != null && (
-              <View className="h-1.5 bg-dark-4 rounded-full overflow-hidden">
+              <View className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
                 <View
                   className="h-full bg-primary-emerald rounded-full"
                   style={{ width: `${reliabilityPercent}%` }}
@@ -114,17 +155,17 @@ export default function RouteDetailScreen() {
           </View>
 
           {departureLabel && (
-            <View className="flex-row justify-between items-center pt-2 border-t border-light-3/10">
-              <Text className="text-light-2 text-sm">Berangkat Pukul</Text>
-              <Text className="text-light-1 text-sm font-semibold">
+            <View className="flex-row justify-between items-center pt-2 border-t border-line">
+              <Text className="text-ink-2 text-sm">Berangkat Pukul</Text>
+              <Text className="text-ink text-sm font-semibold">
                 {departureLabel}
               </Text>
             </View>
           )}
 
-          <View className="flex-row justify-between items-center pt-2 border-t border-light-3/10">
-            <Text className="text-light-2 text-sm">Estimasi Biaya</Text>
-            <Text className="text-light-1 text-lg font-bold">
+          <View className="flex-row justify-between items-center pt-2 border-t border-line">
+            <Text className="text-ink-2 text-sm">Estimasi Biaya</Text>
+            <Text className="text-ink text-lg font-bold">
               {formatRupiah(routeData.cost_idr)}
             </Text>
           </View>
@@ -136,27 +177,24 @@ export default function RouteDetailScreen() {
             onPress={() =>
               router.push({
                 pathname: "/navigate",
-                params: {
-                  data: JSON.stringify(routeData),
-                  origin: origin,
-                },
+                params: { id: routeData.route_id },
               })
             }
-            className="flex-1 items-center py-4 rounded-xl bg-light-1 active:opacity-90"
+            className="flex-1 items-center py-4 rounded-xl bg-brand-blue active:opacity-90"
           >
-            <Text className="text-md text-dark-1 font-bold">
+            <Text className="text-md text-white font-bold">
               Mulai Navigasi
             </Text>
           </Pressable>
         </View>
 
         <View className="w-full items-center pt-2">
-          <Text className="text-light-3 text-xs text-center w-5/6">
+          <Text className="text-muted text-xs text-center w-5/6">
             Data diperbarui pada {new Date().toLocaleTimeString()} • Sumber:
             SmartRoute AI Model
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </ScreenBackground>
   );
 }

@@ -1,288 +1,207 @@
 // src/components/navigate/NavigateMap.web.tsx
-import { Coordinate } from "@/services/mapService";
-import React, {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from "react";
+//
+// Leaflet di dalam iframe (srcDoc). Dokumen iframe dibangun SEKALI (lazy
+// useState) — Task App-19: srcDoc yang berubah membuat browser me-reload
+// seluruh peta (ubin di-fetch ulang, pan/zoom user hilang). Semua perubahan
+// sesudahnya (leg aktif, posisi GPS, bingkai kamera) dikirim lewat
+// postMessage.
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { View } from "react-native";
+import type { NavigateMapHandle, NavigateMapProps } from "./navigateMapTypes";
 
-export interface NavigateMapProps {
-  coordinates: Coordinate[];
-  routeGeometry: GeoJSON.LineString | null;
-  currentStepIndex: number;
-  isFinished: boolean;
-  userLocation?: Coordinate | null;
-  isFollowingUser?: boolean;
-}
+export type { NavigateMapHandle, NavigateMapProps } from "./navigateMapTypes";
 
-export interface NavigateMapHandle {
-  flyTo: (center: [number, number], zoom?: number) => void;
+function escapeForScript(value: unknown): string {
+  // JSON di dalam <script>: cegah "</script>" di nama halte memutus tag.
+  return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
 const NavigateMap = forwardRef<NavigateMapHandle, NavigateMapProps>(
   (
-    {
-      coordinates,
-      routeGeometry,
-      currentStepIndex,
-      isFinished,
-      userLocation,
-      isFollowingUser,
-    },
+    { segments, stops, activeLegIndex, focusCoords, userLocation, isFollowingUser, padding },
     ref,
   ) => {
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
+    const post = (message: unknown) =>
+      iframeRef.current?.contentWindow?.postMessage(message, "*");
+
     useImperativeHandle(ref, () => ({
-      flyTo: (center: [number, number], zoom = 15) => {
-        iframeRef.current?.contentWindow?.postMessage(
-          {
-            type: "FLY_TO",
-            lat: center[1],
-            lng: center[0],
-            zoom,
-          },
-          "*",
-        );
+      flyTo: (center: [number, number], zoom = 16) => {
+        post({ type: "FLY_TO", lat: center[1], lng: center[0], zoom });
       },
     }));
 
-    // Post updates to the Leaflet iframe
+    // Kunci bingkai: kamera hanya dibingkai ulang saat leg aktif berganti
+    // atau mode ikuti-GPS dimatikan — bukan tiap update GPS, supaya user
+    // tetap bisa menggeser peta dengan bebas.
+    const focusKey = `${activeLegIndex}-${isFollowingUser ? 1 : 0}`;
+    const latestState = useRef<unknown>(null);
+    latestState.current = {
+      type: "UPDATE_STATE",
+      activeLegIndex,
+      userLocation: userLocation ?? null,
+      isFollowingUser: !!isFollowingUser,
+      focusCoords,
+      focusKey,
+      padding,
+    };
+
     useEffect(() => {
-      const targetCoord =
-        isFollowingUser && userLocation
-          ? userLocation
-          : coordinates[isFinished ? coordinates.length - 1 : currentStepIndex];
+      post(latestState.current);
+      // focusCoords turunan dari activeLegIndex — sudah terwakili focusKey.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeLegIndex, userLocation, isFollowingUser, focusKey, padding.top, padding.bottom]);
 
-      if (targetCoord && iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage(
-          {
-            type: "UPDATE_STATE",
-            targetCoord,
-            currentStepIndex,
-            isFinished,
-            userLocation,
-            // Task App-19: garis rute yang terpotong (routeGeometry berubah
-            // setiap userLocation ter-update, lihat efek "3. LOGIKA TRIMMING
-            // ROUTE" di app/navigate.tsx) — dikirim di SINI lewat postMessage
-            // + polyline.setLatLngs() di dalam iframe (bukan lewat re-render
-            // srcDoc), karena srcDoc yang berubah bikin BROWSER ME-RELOAD
-            // SELURUH DOKUMEN iframe dari nol (ubin di-fetch ulang, pan/zoom
-            // user hilang) — dibuktikan langsung lewat network log saat
-            // investigasi task ini: request ke tiles.openfreemap.org
-            // berulang PERSIS tiap userLocation berubah, sebelum perbaikan
-            // ini. [lng,lat] GeoJSON dibalik ke [lat,lng] Leaflet, sama
-            // seperti konversi polylineCoords awal di bawah.
-            routeCoords: routeGeometry
-              ? routeGeometry.coordinates.map((c) => [c[1], c[0]])
-              : null,
-          },
-          "*",
-        );
-      }
-    }, [
-      currentStepIndex,
-      coordinates,
-      isFinished,
-      isFollowingUser,
-      userLocation,
-      routeGeometry,
-    ]);
-
-    // Task App-19: leafletHtml (jadi juga polylineCoords/markersData di
-    // dalamnya) dibangun SEKALI lewat lazy initializer useState — BUKAN
-    // dihitung ulang tiap render seperti sebelumnya. Itu penyebab utama bug
-    // "peta reload total tiap GPS bergerak": routeGeometry berubah tiap
-    // userLocation ter-update (beberapa kali per menit selama navigasi
-    // aktif) -> leafletHtml (string) ikut berubah -> React nge-set ulang
-    // atribut srcDoc -> browser me-reload SELURUH dokumen iframe (bukan
-    // cuma re-render React biasa). Snapshot koordinat awal di sini masih
-    // benar dipakai untuk gambar pertama; update SETELAHNYA (termasuk
-    // trimming rute) lewat postMessage di efek atas, persis pola FLY_TO
-    // yang sudah ada.
     const [leafletHtml] = useState(() => {
-      if (coordinates.length === 0) return "";
-
-      const initialCenter = userLocation
-        ? [userLocation.latitude, userLocation.longitude]
-        : [coordinates[0].latitude, coordinates[0].longitude];
-
-      const polylineCoords = routeGeometry
-        ? routeGeometry.coordinates.map((c) => [c[1], c[0]])
-        : coordinates.map((c) => [c.latitude, c.longitude]);
-
-      const markersData = coordinates.map((c, i) => ({
-        lat: c.latitude,
-        lng: c.longitude,
-        index: i,
-        isOrigin: i === 0,
-        isDestination: i === coordinates.length - 1,
+      if (segments.length === 0) return "";
+      const lines = segments.map((s) => ({
+        latlngs: s.coords.map((c) => [c[1], c[0]]),
+        color: s.color,
+        dashed: s.dashed,
       }));
+      const first = segments[0].coords[0];
 
-      return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <!-- OpenFreeMap tiles are vector tiles rendered via MapLibre GL; this
-             bridge plugin lets them plug into Leaflet as a normal layer, so
-             the rest of the map (L.map/L.marker/L.polyline below) stays
-             plain Leaflet. See Task App-02. -->
-        <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" />
-        <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
-        <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.20/leaflet-maplibre-gl.js"></script>
-        <style>
-          html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #18181B; }
-          .leaflet-control-attribution {
-            background: rgba(24, 24, 27, 0.75);
-            color: #A1A1AA;
-            font-size: 10px;
-          }
-          .leaflet-control-attribution a { color: #D4D4D8; }
-          .step-marker {
-            border-radius: 50%;
-            border: 2px solid white;
-            transition: all 0.3s ease;
-          }
-          .origin-marker { background: #EF4444; }
-          .active-marker { background: #00875A; box-shadow: 0 0 10px #00875A; }
-          .default-marker { background: #6B7280; opacity: 0.8; }
-          .user-marker {
-            width: 14px;
-            height: 14px;
-            background: #3B82F6;
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 0 8px #3B82F6;
-          }
-        </style>
-      </head>
-      <body>
-        <div id="map"></div>
-        <script>
-          const map = L.map('map', {
-            zoomControl: false,
-            attributionControl: true
-          }).setView([${initialCenter[0]}, ${initialCenter[1]}], 14);
+      return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- OpenFreeMap (vector tiles, tanpa API key) lewat bridge MapLibre ->
+       Leaflet. Lihat Task App-02. -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" />
+  <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.20/leaflet-maplibre-gl.js"></script>
+  <style>
+    html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #18181B; }
+    .leaflet-control-attribution { background: rgba(24,24,27,0.75); color: #A1A1AA; font-size: 10px; }
+    .leaflet-control-attribution a { color: #D4D4D8; }
+    .stop-label {
+      background: rgba(24,24,27,0.92); color: #F4F4F5; border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px; font: 600 11px system-ui, sans-serif; padding: 2px 6px; box-shadow: none;
+    }
+    .stop-label.pass { font-weight: 500; color: #D4D4D8; }
+    .stop-label::before { display: none; }
+    .user-dot {
+      width: 16px; height: 16px; background: #3B82F6; border-radius: 50%;
+      border: 3px solid white; box-shadow: 0 0 0 6px rgba(59,130,246,0.25);
+    }
+    .dest-pin { font-size: 26px; line-height: 26px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+  const map = L.map('map', { zoomControl: false, attributionControl: true })
+    .setView([${first[1]}, ${first[0]}], 15);
+  L.maplibreGL({
+    style: 'https://tiles.openfreemap.org/styles/dark',
+    attribution: 'OpenFreeMap &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+  }).addTo(map);
 
-          // OpenFreeMap: free, no API key — replaces CartoDB's dark_all
-          // tiles, which now require a key and render an "API KEY REQUIRED"
-          // watermark instead of a map. Style URL mirrors the one already
-          // proven working in the (shelved) dashboard's Map3DToggle.tsx.
-          L.maplibreGL({
-            style: 'https://tiles.openfreemap.org/styles/dark',
-            attribution:
-              'OpenFreeMap &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-          }).addTo(map);
+  const lines = ${escapeForScript(lines)};
+  const stops = ${escapeForScript(stops)};
 
-          const polylineCoords = ${JSON.stringify(polylineCoords)};
-          const polyline = L.polyline(polylineCoords, {
-            color: '#00875A',
-            weight: 5,
-            lineCap: 'round',
-            lineJoin: 'round'
-          }).addTo(map);
+  // Garis tepi gelap di bawah garis moda supaya tetap terbaca di atas
+  // jalan-jalan peta gelap.
+  const casings = lines.map((l) => L.polyline(l.latlngs, {
+    color: '#0A0A0B', weight: 9, opacity: 0.9, lineCap: 'round', lineJoin: 'round',
+  }).addTo(map));
+  const polylines = lines.map((l) => L.polyline(l.latlngs, {
+    color: l.color, weight: 6, lineCap: 'round', lineJoin: 'round',
+    dashArray: l.dashed ? '1 10' : null,
+  }).addTo(map));
 
-          if (polylineCoords.length > 1) {
-            map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
-          }
+  const all = L.featureGroup(polylines);
+  if (lines.length) map.fitBounds(all.getBounds(), { padding: [40, 40] });
 
-          const markersData = ${JSON.stringify(markersData)};
-          const markerInstances = [];
+  const passMarkers = [];
+  stops.forEach((s) => {
+    if (s.kind === 'destination') {
+      const icon = L.divIcon({ html: '<div class="dest-pin">📍</div>', className: '', iconSize: [26, 26], iconAnchor: [13, 24] });
+      L.marker([s.lat, s.lng], { icon, zIndexOffset: 1000 }).addTo(map)
+        .bindTooltip(s.name, { permanent: true, direction: 'top', offset: [0, -22], className: 'stop-label' });
+      return;
+    }
+    const isPass = s.kind === 'pass';
+    const m = L.circleMarker([s.lat, s.lng], {
+      radius: isPass ? 4 : 7,
+      color: isPass ? s.color : '#FFFFFF',
+      weight: isPass ? 2 : 3,
+      fillColor: isPass ? '#18181B' : s.color,
+      fillOpacity: 1,
+    }).addTo(map);
+    m.bindTooltip(s.name, {
+      permanent: !isPass, direction: 'right', offset: [8, 0],
+      className: 'stop-label' + (isPass ? ' pass' : ''),
+    });
+    if (isPass) passMarkers.push({ m, s });
+  });
 
-          markersData.forEach((m) => {
-            const el = document.createElement('div');
-            el.className = 'step-marker ' + (m.isOrigin ? 'origin-marker' : 'default-marker');
-            el.style.width = '16px';
-            el.style.height = '16px';
+  // Nama halte yang dilewati ikut tampil saat diperbesar (zoom >= 16),
+  // supaya tidak menumpuk di zoom jauh.
+  function updatePassLabels() {
+    const show = map.getZoom() >= 16;
+    passMarkers.forEach(({ m }) => show ? m.openTooltip() : m.closeTooltip());
+  }
+  map.on('zoomend', updatePassLabels);
 
-            const icon = L.divIcon({
-              html: el,
-              className: '',
-              iconSize: [16, 16],
-              iconAnchor: [8, 8]
-            });
+  let userMarker = null;
+  let lastFocusKey = null;
 
-            const marker = L.marker([m.lat, m.lng], { icon }).addTo(map);
-            markerInstances.push({ marker, el, data: m });
-          });
+  function applyActive(active) {
+    polylines.forEach((p, i) => {
+      const on = i === active;
+      p.setStyle({ opacity: on ? 1 : 0.45, weight: on ? 7 : 5 });
+      casings[i].setStyle({ opacity: on ? 0.9 : 0.4 });
+      if (on) { casings[i].bringToFront(); p.bringToFront(); }
+    });
+  }
 
-          let userMarker = null;
-
-          function updateUserMarker(userLoc) {
-            if (!userLoc) return;
-            if (!userMarker) {
-              const el = document.createElement('div');
-              el.className = 'user-marker';
-              const icon = L.divIcon({ html: el, className: '', iconSize: [14, 14], iconAnchor: [7, 7] });
-              userMarker = L.marker([userLoc.latitude, userLoc.longitude], { icon }).addTo(map);
-            } else {
-              userMarker.setLatLng([userLoc.latitude, userLoc.longitude]);
-            }
-          }
-
-          window.addEventListener('message', (e) => {
-            if (!e.data) return;
-            if (e.data.type === 'FLY_TO') {
-              map.flyTo([e.data.lat, e.data.lng], e.data.zoom || 15, { duration: 0.8 });
-            } else if (e.data.type === 'UPDATE_STATE') {
-              const { targetCoord, currentStepIndex, isFinished, userLocation, routeCoords } = e.data;
-              // Task App-19: update polyline IN PLACE lewat setLatLngs —
-              // inilah live-trim rute yang sesungguhnya, tanpa reload
-              // dokumen (lihat catatan panjang di komponen React-nya).
-              if (routeCoords) {
-                polyline.setLatLngs(routeCoords);
-              }
-              if (targetCoord) {
-                map.flyTo([targetCoord.latitude, targetCoord.longitude], 15, { duration: 0.8 });
-              }
-              if (userLocation) {
-                updateUserMarker(userLocation);
-              }
-              markerInstances.forEach(({ el, data }) => {
-                const isActive = isFinished ? data.isDestination : data.index === currentStepIndex;
-                if (data.isOrigin) {
-                  el.className = 'step-marker origin-marker';
-                  el.style.width = isActive ? '22px' : '16px';
-                  el.style.height = isActive ? '22px' : '16px';
-                } else if (isActive) {
-                  el.className = 'step-marker active-marker';
-                  el.style.width = '22px';
-                  el.style.height = '22px';
-                } else {
-                  el.className = 'step-marker default-marker';
-                  el.style.width = '14px';
-                  el.style.height = '14px';
-                }
-              });
-            }
-          });
-        </script>
-      </body>
-      </html>
-    `;
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d) return;
+    if (d.type === 'FLY_TO') {
+      map.flyTo([d.lat, d.lng], d.zoom || 16, { duration: 0.8 });
+      return;
+    }
+    if (d.type !== 'UPDATE_STATE') return;
+    applyActive(d.activeLegIndex);
+    if (d.userLocation) {
+      const ll = [d.userLocation.latitude, d.userLocation.longitude];
+      if (!userMarker) {
+        const icon = L.divIcon({ html: '<div class="user-dot"></div>', className: '', iconSize: [16, 16], iconAnchor: [8, 8] });
+        userMarker = L.marker(ll, { icon, zIndexOffset: 2000 }).addTo(map);
+      } else userMarker.setLatLng(ll);
+    }
+    const pad = { paddingTopLeft: [40, d.padding.top + 20], paddingBottomRight: [40, d.padding.bottom + 20] };
+    if (d.isFollowingUser && d.userLocation) {
+      map.flyTo([d.userLocation.latitude, d.userLocation.longitude], Math.max(map.getZoom(), 16), { duration: 0.6 });
+    } else if (d.focusKey !== lastFocusKey && d.focusCoords && d.focusCoords.length) {
+      const b = L.latLngBounds(d.focusCoords.map((c) => [c[1], c[0]]));
+      map.flyToBounds(b, Object.assign({ duration: 0.8, maxZoom: 17 }, pad));
+    }
+    lastFocusKey = d.focusKey;
+  });
+</script>
+</body>
+</html>`;
     });
 
-    if (coordinates.length === 0 || !leafletHtml) return null;
+    if (!leafletHtml) return null;
 
     return (
       <View style={{ flex: 1, backgroundColor: "#18181B" }}>
         <iframe
           ref={iframeRef as any}
           srcDoc={leafletHtml}
-          style={{
-            width: "100%",
-            height: "100%",
-            border: "none",
-            display: "block",
-          }}
-          title="Route Navigation Map"
+          // Pesan pertama bisa terkirim sebelum dokumen iframe siap — kirim
+          // ulang state terakhir begitu dokumen selesai dimuat.
+          onLoad={() => post(latestState.current)}
+          style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+          title="Peta navigasi rute"
         />
       </View>
     );

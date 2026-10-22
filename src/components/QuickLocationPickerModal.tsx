@@ -56,35 +56,35 @@ export default function QuickLocationPickerModal({
         >
           <Pressable
             onPress={() => {}}
-            className="w-full max-w-[420px] max-h-[75%] bg-dark-2 rounded-2xl overflow-hidden border border-light-3/10"
+            className="w-full max-w-[420px] max-h-[75%] bg-surface rounded-2xl overflow-hidden border border-line"
           >
             <View className="flex-row items-center justify-between px-5 pt-5 pb-3">
-              <Text className="text-light-1 font-bold text-lg">{title}</Text>
+              <Text className="text-ink font-bold text-lg">{title}</Text>
               <Pressable onPress={onClose} hitSlop={12}>
-                <Ionicons name="close" size={22} color="#A1A1AA" />
+                <Ionicons name="close" size={22} color="#737373" />
               </Pressable>
             </View>
 
             <View className="px-5 pb-5 gap-3">
-              <View className="flex-row items-center gap-2 bg-dark-4 rounded-xl px-3 py-2.5">
-                <Ionicons name="search" size={16} color="#71717A" />
+              <View className="flex-row items-center gap-2 bg-surface-2 rounded-xl px-3 py-2.5">
+                <Ionicons name="search" size={16} color="#737373" />
                 <TextInput
                   value={query}
                   onChangeText={setQuery}
                   placeholder="Cari nama lokasi..."
-                  placeholderTextColor="#71717A"
+                  placeholderTextColor="#737373"
                   autoFocus
-                  className="flex-1 text-light-1 text-md"
+                  className="flex-1 font-jakarta text-ink text-md"
                 />
-                {isLoading && <ActivityIndicator size="small" color="#00875A" />}
+                {isLoading && <ActivityIndicator size="small" color="#018959" />}
               </View>
 
               {query.trim().length > 0 && query.trim().length < 3 ? (
-                <Text className="text-light-3 text-sm text-center py-4">
+                <Text className="text-muted text-sm text-center py-4">
                   Ketik minimal 3 karakter.
                 </Text>
               ) : query.trim().length >= 3 && !isLoading && suggestions.length === 0 ? (
-                <Text className="text-light-3 text-sm text-center py-4">
+                <Text className="text-muted text-sm text-center py-4">
                   Tidak ada lokasi untuk &quot;{query.trim()}&quot;
                 </Text>
               ) : (
@@ -93,13 +93,13 @@ export default function QuickLocationPickerModal({
                     <Pressable
                       key={`${item.displayName}-${index}`}
                       onPress={() => onSelect(item)}
-                      className="py-3 border-b border-light-3/10 active:bg-dark-4"
+                      className="py-3 border-b border-line active:bg-surface-2"
                     >
-                      <Text className="text-light-1 font-semibold text-md" numberOfLines={1}>
+                      <Text className="text-ink font-semibold text-md" numberOfLines={1}>
                         {item.primaryText}
                       </Text>
                       {item.secondaryText.length > 0 && (
-                        <Text className="text-light-3 text-xs mt-0.5" numberOfLines={1}>
+                        <Text className="text-muted text-xs mt-0.5" numberOfLines={1}>
                           {item.secondaryText}
                         </Text>
                       )}

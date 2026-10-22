@@ -1,8 +1,11 @@
-import InfoCard from "@/components/InfoCard";
+import ScreenBackground from "@/components/ScreenBackground";
+import { LEG_MODES, LegModeKey } from "@/components/transit/legModes";
 import Text from "@/components/Text";
+import TopNav from "@/components/TopNav";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-import { Pressable, ScrollView, SectionList, View } from "react-native";
+import { useRouter } from "expo-router";
+import { Pressable, ScrollView, View } from "react-native";
 
 type HistoryItem = {
   id: string;
@@ -93,8 +96,89 @@ const SECTIONS_DATA: HistorySection[] = [
   },
 ];
 
+// Ikon & warna moda per jenis perjalanan riwayat — dari legModes.ts supaya
+// sama dengan layar hasil & detail rute.
+const TRANSPORT_LEGS: Record<string, LegModeKey[]> = {
+  MRT: ["walk", "mrt"],
+  Transjakarta: ["walk", "brt"],
+  "Multi-moda": ["walk", "brt", "krl"],
+};
+
+const TRANSPORT_TYPES = ["Semua", "MRT", "Transjakarta", "Multi-moda"];
+
+function ratingColor(rating: string): string {
+  const value = parseFloat(rating);
+  if (value >= 9) return "#34D399";
+  if (value >= 8) return "#FACC15";
+  return "#F59E0B";
+}
+
+function SummaryCard({ value, label }: { value: string; label: string }) {
+  return (
+    <View className="flex-1 bg-surface rounded-2xl py-3.5 px-2 items-center gap-1 border border-line">
+      <Text className="text-ink font-bold text-lg" numberOfLines={1} adjustsFontSizeToFit>
+        {value}
+      </Text>
+      <Text className="text-muted text-xs" numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function HistoryCard({ item }: { item: HistoryItem }) {
+  const legs = TRANSPORT_LEGS[item.transportType] ?? ["walk"];
+  return (
+    <View className="bg-surface rounded-2xl p-4 gap-3 border border-line">
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="flex-1 gap-1">
+          {/* Satu Text yang boleh 2 baris: di layar sempit nama tempat
+              turun ke baris kedua, bukan terpotong "Dukuh …". */}
+          <Text className="text-ink font-bold text-base" numberOfLines={2}>
+            {item.asal}
+            <Text className="text-muted font-bold text-base"> → </Text>
+            {item.tujuan}
+          </Text>
+          <Text className="text-muted text-xs">{item.waktu}</Text>
+        </View>
+        <View className="items-end gap-1">
+          <Text className="text-ink font-bold text-base">{item.harga}</Text>
+          <Text className="text-xs font-semibold" style={{ color: ratingColor(item.rating) }}>
+            {item.rating}
+          </Text>
+        </View>
+      </View>
+
+      <View className="flex-row items-center justify-between pt-3 border-t border-line">
+        <View className="flex-row items-center gap-1">
+          {legs.map((key, i) => {
+            const mode = LEG_MODES[key];
+            return (
+              <View key={key} className="flex-row items-center gap-1">
+                <View
+                  className="w-7 h-7 rounded-lg items-center justify-center"
+                  style={{ backgroundColor: `${mode.color}26` }}
+                >
+                  <Ionicons name={mode.icon} size={15} color={mode.color} />
+                </View>
+                {i < legs.length - 1 && (
+                  <Ionicons name="chevron-forward" size={12} color="#A3A3A3" />
+                )}
+              </View>
+            );
+          })}
+        </View>
+        <View className="flex-row items-center gap-1 bg-surface-2 px-3 py-1.5 rounded-full">
+          <Ionicons name="time-outline" size={13} color="#404040" />
+          <Text className="text-ink text-xs font-semibold">{item.durasi}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function HistoryScreen() {
-  const transportTypes = ["Semua", "MRT", "Transjakarta", "Multi-moda"];
+  const router = useRouter();
   const [selectedType, setSelectedType] = useState("Semua");
 
   const filteredSections = SECTIONS_DATA.map((section) => ({
@@ -104,92 +188,68 @@ export default function HistoryScreen() {
     ),
   })).filter((section) => section.data.length > 0);
 
-  const renderHistoryCard = ({ item }: { item: HistoryItem }) => (
-    <View className="bg-dark-2 p-4 rounded-xl mb-3 shadow-sm">
-      <View className="flex-row justify-between items-center">
-        <View className="flex-row items-center gap-2 max-w-[70%]">
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            className="text-light-1 font-bold text-base"
-          >
-            {item.asal}
-          </Text>
-          <View className="w-3 h-[2px] bg-light-1 rounded-full" />
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            className="text-light-1 font-bold text-base shrink"
-          >
-            {item.tujuan}
-          </Text>
-        </View>
-        <Text className="text-light-1 font-bold text-base">{item.harga}</Text>
-      </View>
-
-      <View className="flex-row justify-between items-center mt-1">
-        <Text className="text-light-3 text-xs">{item.waktu}</Text>
-        <Text
-          className={`${parseInt(item.rating) > 8 ? "text-primary-emerald" : "text-accent"} text-xs font-semibold`}
-        >
-          {item.rating}
-        </Text>
-      </View>
-
-      <View className="flex-row items-center justify-between mt-3">
-        <View className="flex-row items-center gap-3">
-          <Ionicons name="walk" size={18} color="#FFFFFF" />
-          <Ionicons name="bus" size={18} color="#FFFFFF" />
-          <Ionicons name="train" size={20} color="#FFFFFF" />
-        </View>
-        <View className="bg-light-1/20 px-3 py-1.5 rounded-full">
-          <Text className="text-light-1 text-xs font-bold">{item.durasi}</Text>
-        </View>
-      </View>
-    </View>
-  );
-
   return (
-    <View className="flex-1 bg-[#18181B]">
-      <SectionList
-        sections={filteredSections}
-        renderItem={renderHistoryCard}
-        keyExtractor={(item) => item.id}
+    <ScreenBackground>
+      {/* ScrollView biasa (data sedikit & statis), bukan SectionList: di web
+          contentContainerClassName SectionList tidak diterapkan NativeWind,
+          jadi padding kiri-kanan hilang dan kartu melebar keluar layar. */}
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingTop: 48, paddingBottom: 120, paddingHorizontal: 20, gap: 20 }}
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="pt-14 pb-28 px-5"
-        renderSectionHeader={({ section: { title } }) => (
-          <Text className="text-md text-light-1 font-bold my-3 py-1">
-            {title}
-          </Text>
-        )}
-        ListHeaderComponent={
-          <View className="gap-6 mb-2">
-            {/* Cards Ringkasan */}
-            <View className="flex-row gap-2">
-              <InfoCard title="24" desc="Perjalanan" />
-              <InfoCard title="Rp. 336rb" desc="Total Hemat" />
-              <InfoCard title="28.8 kg" desc="CO2 Hemat" />
-            </View>
+      >
+        <TopNav />
 
-            {/* Filter Categories - UPDATED MATCHING route.tsx */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerClassName="gap-2"
-            >
-              {transportTypes.map((item) => (
-                <Pressable key={item} onPress={() => setSelectedType(item)}>
-                  <Text
-                    className={`${selectedType === item ? "bg-light-1 text-dark-1" : "bg-dark-4 text-light-2"} font-semibold text-xs px-4 py-2 rounded-full border border-light-3/10`}
-                  >
-                    {item}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+        <View className="flex-row items-center gap-3">
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : router.navigate("/account"))}
+            accessibilityRole="button"
+            accessibilityLabel="Kembali"
+            className="bg-surface p-2.5 rounded-full border border-line"
+          >
+            <Ionicons name="arrow-back" size={20} color="#0A0A0A" />
+          </Pressable>
+          <Text className="text-2xl font-bold text-white">Riwayat Perjalanan</Text>
+        </View>
+
+        <View className="flex-row gap-2">
+          <SummaryCard value="24" label="Perjalanan" />
+          <SummaryCard value="Rp336rb" label="Total Hemat" />
+          <SummaryCard value="28,8 kg" label="CO₂ Hemat" />
+        </View>
+
+        {/* Chip filter selebar layar (tidak terpotong). Warna teks lewat
+            style — di web class Text yang berganti ditumpuk. */}
+        <View className="flex-row flex-wrap gap-2">
+          {TRANSPORT_TYPES.map((type) => {
+            const active = selectedType === type;
+            return (
+              <Pressable
+                key={type}
+                onPress={() => setSelectedType(type)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                className={`${active ? "bg-brand-blue" : "bg-surface-2"} px-4 py-2 rounded-full border border-line`}
+              >
+                <Text className="font-semibold text-xs" style={{ color: active ? "#FFFFFF" : "#404040" }}>
+                  {type}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {filteredSections.map((section) => (
+          <View key={section.title} className="gap-3">
+            <Text className="text-surface-2 text-sm font-bold uppercase tracking-wider">
+              {section.title}
+            </Text>
+            {section.data.map((item) => (
+              <HistoryCard key={item.id} item={item} />
+            ))}
           </View>
-        }
-      />
-    </View>
+        ))}
+      </ScrollView>
+    </ScreenBackground>
   );
 }

@@ -48,21 +48,21 @@ export default function ArrivalCelebration({
   ];
 
   return (
-    <View className="absolute inset-0 bg-[#18181B] items-center justify-center px-8 gap-6 z-20">
+    <View className="absolute inset-0 bg-surface items-center justify-center px-8 gap-6 z-20">
       <View className="w-24 h-24 rounded-full bg-primary-emerald/20 items-center justify-center">
-        <Ionicons name="checkmark-circle" size={64} color="#00875A" />
+        <Ionicons name="checkmark-circle" size={64} color="#018959" />
       </View>
 
       <View className="items-center gap-2">
-        <Text className="text-light-1 font-bold text-3xl text-center">
+        <Text className="text-ink font-bold text-3xl text-center">
           Selamat! 🎉
         </Text>
         {destinationLabel && (
-          <Text className="text-light-2 text-base text-center">
+          <Text className="text-ink-2 text-base text-center">
             Anda telah tiba di {destinationLabel}
           </Text>
         )}
-        <Text className="text-light-3 text-sm text-center mt-1">
+        <Text className="text-muted text-sm text-center mt-1">
           Terima kasih telah menggunakan SmartRoute AI. Semoga harimu
           menyenangkan!
         </Text>
@@ -72,19 +72,19 @@ export default function ArrivalCelebration({
         {summary.map((item) => (
           <View
             key={item.label}
-            className="flex-row items-center gap-1.5 bg-dark-2 px-3.5 py-2 rounded-full border border-light-3/10"
+            className="flex-row items-center gap-1.5 bg-surface-2 px-3.5 py-2 rounded-full border border-line"
           >
-            <Ionicons name={item.icon} size={14} color="#A1A1AA" />
-            <Text className="text-light-2 text-xs">{item.label}</Text>
+            <Ionicons name={item.icon} size={14} color="#737373" />
+            <Text className="text-ink-2 text-xs">{item.label}</Text>
           </View>
         ))}
       </View>
 
       <Pressable
         onPress={onGoHome}
-        className="w-full bg-light-1 py-4 rounded-2xl items-center active:opacity-90 mt-2"
+        className="w-full bg-brand-blue py-4 rounded-2xl items-center active:opacity-90 mt-2"
       >
-        <Text className="text-dark-1 font-bold text-base">
+        <Text className="text-white font-bold text-base">
           Kembali ke Beranda
         </Text>
       </Pressable>

@@ -1,20 +1,27 @@
 import AccountCard from "@/components/AccountCard";
 import HistoryCard from "@/components/HistoryCard";
 import PreferenceCard from "@/components/PreferenceCard";
-import { ScrollView, View } from "react-native";
+import ScreenBackground from "@/components/ScreenBackground";
+import Text from "@/components/Text";
+import TopNav from "@/components/TopNav";
+import { ScrollView } from "react-native";
 
 export default function AccountScreen() {
   return (
-    <View className="flex-1 bg-[#18181B]">
+    <ScreenBackground>
       <ScrollView
         className="flex-1"
-        contentContainerClassName="pt-14 pb-28 px-5 items-center gap-6"
+        contentContainerClassName="pt-12 pb-28 px-5 gap-5"
         showsVerticalScrollIndicator={false}
       >
+        <TopNav />
+        {/* Judul di atas latar biru malam — tetap putih. */}
+        <Text className="text-3xl font-bold text-white">Akun Anda</Text>
+
         <AccountCard />
         <PreferenceCard />
         <HistoryCard />
       </ScrollView>
-    </View>
+    </ScreenBackground>
   );
 }

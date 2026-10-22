@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Ref } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import LocationAutocompleteField, {
   LocationAutocompleteFieldHandle,
 } from "./LocationAutocompleteField";
 import Text from "./Text";
+import { PlaceSuggestion } from "@/utils/geocode";
 
 interface RouteCardProps {
   origin: string;
@@ -18,6 +19,10 @@ interface RouteCardProps {
    * LocationAutocompleteFieldHandle.
    */
   destinationFieldRef?: Ref<LocationAutocompleteFieldHandle>;
+  onOriginSelect?: (suggestion: PlaceSuggestion) => void;
+  onDestinationSelect?: (suggestion: PlaceSuggestion) => void;
+  /** Tombol tukar asal <-> tujuan. */
+  onSwap?: () => void;
 }
 
 export default function RouteCard({
@@ -26,10 +31,13 @@ export default function RouteCard({
   onOriginChange,
   onDestinationChange,
   destinationFieldRef,
+  onOriginSelect,
+  onDestinationSelect,
+  onSwap,
 }: RouteCardProps) {
   return (
     <View
-      className="w-full bg-dark-4 px-4 py-4 rounded-xl gap-2.5"
+      className="w-full bg-surface-2 px-4 py-4 rounded-xl gap-2.5"
       // Dropdown saran lokasi di dalam kartu ini absolute & meluber ke bawah,
       // menimpa area DepartureTimeField yang di Beranda adalah sibling
       // BERIKUTNYA — tanpa zIndex di sini, sibling itu selalu menang (urutan
@@ -37,21 +45,31 @@ export default function RouteCard({
       // anak kartu ini, bukan lintas kartu.
       style={{ zIndex: 10 }}
     >
-      <Text className="text-light-2 text-md">Dari</Text>
+      <Text className="text-ink-2 text-md">Dari</Text>
       <LocationAutocompleteField
         value={origin}
         onChange={onOriginChange}
+        onSelectPlace={onOriginSelect}
         placeholder="Lokasi Anda"
       />
       <View className="flex-row gap-4 items-center">
-        <View className="flex-1 h-[2px] rounded-xl bg-light-1/30"></View>
-        <Ionicons name="swap-vertical" size={24} color={"#FFFFFF"} />
+        <View className="flex-1 h-[2px] rounded-xl bg-line"></View>
+        <Pressable
+          onPress={onSwap}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Tukar asal dan tujuan"
+          className="p-1 rounded-full active:bg-line"
+        >
+          <Ionicons name="swap-vertical" size={24} color="#404040" />
+        </Pressable>
       </View>
-      <Text className="text-light-2 text-md">Tujuan</Text>
+      <Text className="text-ink-2 text-md">Tujuan</Text>
       <LocationAutocompleteField
         ref={destinationFieldRef}
         value={destination}
         onChange={onDestinationChange}
+        onSelectPlace={onDestinationSelect}
         placeholder="Tujuan Anda"
       />
     </View>

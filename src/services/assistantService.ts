@@ -1,19 +1,23 @@
 // src/services/assistantService.ts
 //
 // Task App-22: data layer untuk UI Asisten AI — memanggil POST
-// /assistant/ask (Task Backend-06) yang sudah ada dan teruji, TIDAK ada
-// perubahan logic backend sama sekali (batasan eksplisit task). Pola
-// fetch-wrapper sama persis dengan crowdService.ts/nearbyStopsService.ts
-// (custom Error subclass, cek network-error vs status non-ok) supaya
-// konsisten satu gaya di seluruh services/.
+// /assistant/ask. Pola fetch-wrapper sama persis dengan crowdService.ts/
+// nearbyStopsService.ts (custom Error subclass, cek network-error vs status
+// non-ok) supaya konsisten satu gaya di seluruh services/.
+//
+// Perluasan (diminta user langsung, 2026-09-23): ikut mengirim posisi GPS
+// user, asal/tujuan yang sudah di-geocode, dan beberapa giliran percakapan
+// terakhir; backend membalas jawaban + halte terdekat untuk tombol aksi.
+import { Coordinate } from "@/utils/geocode";
 import { fetchWithTimeout, RequestTimeoutError } from "@/utils/withTimeout";
 import { API_BASE_URL } from "./apiConfig";
+import { NearbyStop } from "./nearbyStopsService";
 
-// Backend sendiri memotong panggilan OpenRouter di 15 detik (lihat
-// openRouterClient.ts), dan pertanyaan yang menyertakan asal/tujuan masih
-// memanggil mesin routing dulu — jawaban terukur 3–16 detik. 20 detik memberi
-// ruang di atas itu tanpa membiarkan layar menggantung tanpa batas.
-const ASSISTANT_TIMEOUT_MS = 20_000;
+// Backend memotong OpenRouter di 15 detik; sebelum itu ia bisa memanggil
+// mesin rute dulu (rute asal-tujuan, atau rute jalan kaki ke halte terdekat
+// yang dibatasi 7 detik). 25 detik memberi ruang di atas itu tanpa membiarkan
+// layar menggantung tanpa batas.
+const ASSISTANT_TIMEOUT_MS = 25_000;
 
 export class AssistantAskError extends Error {
   constructor(
@@ -25,24 +29,50 @@ export class AssistantAskError extends Error {
   }
 }
 
-/**
- * Satu pertanyaan, satu jawaban — backend sendiri stateless (tidak
- * menyimpan riwayat percakapan), jadi tidak ada state multi-turn untuk
- * diteruskan di sini (sesuai batasan eksplisit task: tidak perlu
- * kompleksitas riwayat).
- *
- * @param question - pertanyaan wayfinding user, tidak boleh kosong.
- */
-export async function askAssistant(question: string): Promise<string> {
+export interface AssistantTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AssistantAskOptions {
+  userLocation?: Coordinate | null;
+  origin?: Coordinate | null;
+  destination?: Coordinate | null;
+  history?: AssistantTurn[];
+}
+
+export interface AssistantReply {
+  answer: string;
+  nearbyStops: NearbyStop[];
+}
+
+const toLatLng = (c: Coordinate) => ({ lat: c.latitude, lng: c.longitude });
+
+export async function askAssistant(
+  question: string,
+  options: AssistantAskOptions = {},
+): Promise<AssistantReply> {
+  const { userLocation, origin, destination, history } = options;
+  const context = {
+    ...(userLocation ? { user_location: toLatLng(userLocation) } : {}),
+    ...(origin && destination
+      ? { origin: toLatLng(origin), destination: toLatLng(destination) }
+      : {}),
+  };
+
   let res: Response;
   try {
     res = await fetchWithTimeout(`${API_BASE_URL}/assistant/ask`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({
+        question,
+        ...(Object.keys(context).length > 0 ? { context } : {}),
+        ...(history && history.length > 0 ? { history } : {}),
+      }),
       timeoutMs: ASSISTANT_TIMEOUT_MS,
       timeoutMessage:
-        "Asisten tidak menjawab dalam 20 detik. Coba tanya lagi dengan kalimat yang lebih singkat.",
+        "TOTO tidak menjawab dalam 25 detik. Coba tanya lagi dengan kalimat yang lebih singkat.",
     });
   } catch (err) {
     if (err instanceof RequestTimeoutError) throw new AssistantAskError(err.message, err);
@@ -62,9 +92,7 @@ export async function askAssistant(question: string): Promise<string> {
   if (!res.ok) {
     // Backend selalu mengisi `message` yang jelas untuk tiap status error
     // (400 invalid_request, 502 assistant_unavailable, 500 internal_error)
-    // — diteruskan apa adanya, bukan pesan generik, supaya user tahu persis
-    // kenapa (mis. "Layanan asisten sedang tidak tersedia. Coba lagi
-    // sebentar lagi." untuk 502, bukan cuma "gagal").
+    // — diteruskan apa adanya, bukan pesan generik.
     const message =
       body && typeof body === "object" && "message" in body
         ? String((body as { message?: unknown }).message)
@@ -72,9 +100,15 @@ export async function askAssistant(question: string): Promise<string> {
     throw new AssistantAskError(message);
   }
 
-  const answer = (body as { answer?: unknown })?.answer;
+  const { answer, nearby_stops } = (body ?? {}) as {
+    answer?: unknown;
+    nearby_stops?: unknown;
+  };
   if (typeof answer !== "string") {
     throw new AssistantAskError("Response backend tidak berisi jawaban yang valid.");
   }
-  return answer;
+  return {
+    answer,
+    nearbyStops: Array.isArray(nearby_stops) ? (nearby_stops as NearbyStop[]) : [],
+  };
 }

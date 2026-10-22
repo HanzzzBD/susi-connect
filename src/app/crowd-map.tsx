@@ -38,12 +38,12 @@ function ScreenHeader({ title }: { title: string }) {
     <View className="absolute top-14 left-5 right-5 flex-row items-center gap-3 z-10">
       <Pressable
         onPress={() => router.back()}
-        className="bg-dark-2 p-3 rounded-full shadow-md"
+        className="bg-surface p-3 rounded-full shadow-md"
       >
-        <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+        <Ionicons name="arrow-back" size={20} color="#0A0A0A" />
       </Pressable>
-      <View className="bg-dark-2/95 px-4 py-2.5 rounded-full">
-        <Text className="text-light-1 font-bold text-sm">{title}</Text>
+      <View className="bg-surface/95 px-4 py-2.5 rounded-full">
+        <Text className="text-ink font-bold text-sm">{title}</Text>
       </View>
     </View>
   );
@@ -57,14 +57,14 @@ function LegendRow() {
   ];
   return (
     <View className="absolute bottom-8 left-5 right-5 flex-row justify-center gap-3 z-10">
-      <View className="flex-row items-center gap-3 bg-dark-2/95 px-4 py-2.5 rounded-full">
+      <View className="flex-row items-center gap-3 bg-surface/95 px-4 py-2.5 rounded-full">
         {items.map(({ level, label }) => (
           <View key={level} className="flex-row items-center gap-1.5">
             <View
-              className="w-2.5 h-2.5 rounded-full border border-light-1"
+              className="w-2.5 h-2.5 rounded-full border border-line"
               style={{ backgroundColor: LEVEL_COLOR[level] }}
             />
-            <Text className="text-light-2 text-xs">{label}</Text>
+            <Text className="text-ink-2 text-xs">{label}</Text>
           </View>
         ))}
       </View>
@@ -75,15 +75,16 @@ function LegendRow() {
 // Task App-07: FAB terpisah dari marker yang sudah tampil di peta — inilah
 // satu-satunya jalan masuk saat peta BENAR-BENAR kosong (0 laporan aktif),
 // karena di kondisi itu tidak ada marker sama sekali untuk di-tap. Diletakkan
-// di kanan-bawah supaya tidak bentrok dengan LegendRow (tengah-bawah).
+// di kanan-bawah, DI ATAS LegendRow (dulu sejajar dan menutupi label
+// "Padat" di layar sempit).
 function ReportFab({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
-      className="absolute bottom-8 right-5 z-10 flex-row items-center gap-2 bg-[#00875A] px-4 py-3 rounded-full shadow-lg active:opacity-80"
+      className="absolute bottom-24 right-5 z-10 flex-row items-center gap-2 bg-[#018959] px-4 py-3 rounded-full shadow-lg active:opacity-80"
     >
       <Ionicons name="megaphone" size={18} color="#FFFFFF" />
-      <Text className="text-light-1 font-bold text-sm">Lapor</Text>
+      <Text className="text-white font-bold text-sm">Lapor</Text>
     </Pressable>
   );
 }
@@ -130,30 +131,30 @@ export default function CrowdMapScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center gap-3">
-          <ActivityIndicator size="large" color="#00875A" />
-          <Text className="text-light-2 text-sm">Memuat data kepadatan...</Text>
+          <ActivityIndicator size="large" color="#018959" />
+          <Text className="text-surface-2 text-sm">Memuat data kepadatan...</Text>
         </View>
       ) : errorMessage ? (
         <View className="flex-1 items-center justify-center gap-3 px-8">
           <Ionicons name="warning-outline" size={40} color="#EF4444" />
-          <Text className="text-light-1 text-center font-bold">
+          <Text className="text-white text-center font-bold">
             {errorMessage}
           </Text>
           <Pressable
             onPress={load}
-            className="bg-light-1 px-5 py-2.5 rounded-xl mt-2"
+            className="bg-brand-blue px-5 py-2.5 rounded-xl mt-2"
           >
-            <Text className="text-dark-1 font-bold">Coba Lagi</Text>
+            <Text className="text-white font-bold">Coba Lagi</Text>
           </Pressable>
         </View>
       ) : !stops || stops.length === 0 ? (
         <>
           <View className="flex-1 items-center justify-center gap-3 px-8">
-            <Ionicons name="cloud-offline-outline" size={40} color="#71717A" />
-            <Text className="text-light-1 text-center font-bold">
+            <Ionicons name="cloud-offline-outline" size={40} color="#737373" />
+            <Text className="text-white text-center font-bold">
               Belum ada laporan kepadatan saat ini
             </Text>
-            <Text className="text-light-3 text-center text-sm">
+            <Text className="text-line text-center text-sm">
               Marker akan muncul di sini begitu ada laporan kepadatan aktif dari
               pengguna lain.
             </Text>

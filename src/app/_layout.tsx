@@ -1,10 +1,18 @@
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { DarkTheme, Stack, ThemeProvider } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import SplashIntro from "@/components/SplashIntro";
 import "../../global.css";
+
+// Latar navigator OPAK (biru malam splash). Gambar latar dipasang per
+// layar lewat components/ScreenBackground.tsx — navigator transparan membuat
+// layar yang tidak aktif ikut terlihat (halaman menumpuk).
+const APP_THEME = {
+  ...DarkTheme,
+  colors: { ...DarkTheme.colors, background: "#001C43", card: "#001C43" },
+};
 
 // Task App-23: keep the native splash (static background image, per
 // app.json) on screen until fonts are ready AND our custom intro overlay is
@@ -39,16 +47,21 @@ export default function RootLayout() {
     return null;
   }
 
-  if (showIntro) {
-    return <SplashIntro onFinish={() => setShowIntro(false)} />;
-  }
-
   return (
-    <View className="flex-1 bg-[#18181B]">
-      {/* <Header /> */}
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-    </View>
+    <ThemeProvider value={APP_THEME}>
+      <View style={{ flex: 1, backgroundColor: "#001C43" }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: "#001C43" },
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+        {/* Intro di ATAS app yang sudah dirender, supaya fade-out-nya
+            langsung memperlihatkan Beranda, bukan layar kosong. */}
+        {showIntro && <SplashIntro onFinish={() => setShowIntro(false)} />}
+      </View>
+    </ThemeProvider>
   );
 }

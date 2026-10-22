@@ -1,16 +1,12 @@
 // src/components/navigate/NavigateMap.native.tsx
 //
-// Migrasi dari react-native-maps ke @maplibre/maplibre-react-native — sama
-// seperti CrowdMapView.native.tsx (Task App-03). react-native-maps di
-// Android memakai Google Maps SDK, yang butuh android.config.googleMaps.
-// apiKey di app.json — key itu tidak pernah ada, jadi native map view
-// crash total (force close) begitu benar-benar dibuka di device fisik.
-// Ditemukan lewat testing APK ngrok (Task Ops-02): "cari rute" aman (tidak
-// menyentuh map sama sekali), tapi "navigasi rute" (layar ini) langsung
-// crash. MapLibre + OpenFreeMap tidak butuh API key sama sekali — konsisten
-// dengan filosofi app ini (OpenFreeMap/Nominatim/OTP2, semua gratis tanpa
-// key) dan sudah terbukti stabil di CrowdMapView.native.tsx.
-import { Coordinate } from "@/services/mapService";
+// MapLibre + OpenFreeMap (tanpa API key) — lihat riwayat migrasi dari
+// react-native-maps di Task Ops-02/App-03: Google Maps SDK butuh key yang
+// tidak pernah ada, dan app crash begitu peta dibuka di device fisik.
+//
+// touchRotate/touchPitch sengaja mati (Task App-17/18): gestur 2 jari
+// hampir selalu ikut memutar/memiringkan peta sedikit, memunculkan ikon
+// kompas dan membuat geser peta terasa tidak presisi.
 import {
   Camera,
   GeoJSONSource,
@@ -20,137 +16,96 @@ import {
   UserLocation,
   type CameraRef,
 } from "@maplibre/maplibre-react-native";
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-} from "react";
-import { StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import type { NavigateMapHandle, NavigateMapProps } from "./navigateMapTypes";
+
+export type { NavigateMapHandle, NavigateMapProps } from "./navigateMapTypes";
 
 const OPENFREEMAP_DARK_STYLE = "https://tiles.openfreemap.org/styles/dark";
 
-export interface NavigateMapProps {
-  coordinates: Coordinate[];
-  routeGeometry: GeoJSON.LineString | null;
-  currentStepIndex: number;
-  isFinished: boolean;
-  userLocation?: Coordinate | null;
-  isFollowingUser?: boolean;
-}
-
-export interface NavigateMapHandle {
-  flyTo: (center: [number, number], zoom?: number) => void;
+function boundsOf(coords: [number, number][]): [number, number, number, number] | null {
+  if (!coords.length) return null;
+  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+  for (const [lng, lat] of coords) {
+    w = Math.min(w, lng); e = Math.max(e, lng);
+    s = Math.min(s, lat); n = Math.max(n, lat);
+  }
+  return [w, s, e, n];
 }
 
 const NavigateMap = forwardRef<NavigateMapHandle, NavigateMapProps>(
   (
-    {
-      coordinates,
-      routeGeometry,
-      currentStepIndex,
-      isFinished,
-      userLocation,
-      isFollowingUser,
-    },
+    { segments, stops, activeLegIndex, focusCoords, userLocation, isFollowingUser, padding },
     ref,
   ) => {
     const cameraRef = useRef<CameraRef>(null);
 
     useImperativeHandle(ref, () => ({
       flyTo: (center: [number, number], zoom = 16) => {
-        // center sudah [longitude, latitude] — format asli MapLibre, tidak
-        // perlu dibalik seperti versi react-native-maps sebelumnya.
         cameraRef.current?.easeTo({ center, zoom, duration: 800 });
       },
     }));
 
-    // Auto camera positioning — persis logic react-native-maps sebelumnya,
-    // cuma animateCamera({center:{latitude,longitude},zoom}) jadi
-    // easeTo({center:[lng,lat],zoom}).
+    // Ikuti GPS: pusatkan tiap update. Tidak mengikuti: bingkai leg aktif,
+    // hanya saat leg berganti / mode ikuti dimatikan (bukan tiap GPS
+    // bergerak), supaya user bebas menggeser peta.
     useEffect(() => {
-      if (!cameraRef.current) return;
-      if (isFollowingUser && userLocation) {
-        cameraRef.current.easeTo({
-          center: [userLocation.longitude, userLocation.latitude],
-          zoom: 16,
-          duration: 800,
-        });
-        return;
-      }
-      if (coordinates.length > 0) {
-        const targetIndex = isFinished
-          ? coordinates.length - 1
-          : currentStepIndex;
-        const targetCoord = coordinates[targetIndex];
-        if (targetCoord) {
-          cameraRef.current.easeTo({
-            center: [targetCoord.longitude, targetCoord.latitude],
-            zoom: 15,
-            duration: 800,
-          });
-        }
-      }
-    }, [
-      currentStepIndex,
-      coordinates,
-      isFinished,
-      isFollowingUser,
-      userLocation,
-    ]);
+      if (!isFollowingUser || !userLocation) return;
+      cameraRef.current?.easeTo({
+        center: [userLocation.longitude, userLocation.latitude],
+        zoom: 16.5,
+        duration: 600,
+      });
+    }, [isFollowingUser, userLocation]);
 
-    if (coordinates.length === 0) return null;
+    useEffect(() => {
+      if (isFollowingUser && userLocation) return;
+      const b = boundsOf(focusCoords);
+      if (!b) return;
+      cameraRef.current?.fitBounds(b, {
+        padding: { top: padding.top + 24, bottom: padding.bottom + 24, left: 40, right: 40 },
+        duration: 800,
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeLegIndex, isFollowingUser]);
 
-    const initialCenter: [number, number] = userLocation
-      ? [userLocation.longitude, userLocation.latitude]
-      : [coordinates[0].longitude, coordinates[0].latitude];
+    const lines = useMemo<GeoJSON.FeatureCollection<GeoJSON.LineString>>(
+      () => ({
+        type: "FeatureCollection",
+        features: segments.map((s, i) => ({
+          type: "Feature",
+          properties: { color: s.color, dashed: s.dashed, active: i === activeLegIndex },
+          geometry: { type: "LineString", coordinates: s.coords },
+        })),
+      }),
+      [segments, activeLegIndex],
+    );
 
-    // GeoJSON LineString [lng, lat] — routeGeometry sudah format ini apa
-    // adanya; fallback ke `coordinates` (dikonversi dari {latitude,
-    // longitude}) kalau backend tidak mengirim geometry rute.
-    const routeLine: GeoJSON.Feature<GeoJSON.LineString> = {
-      type: "Feature",
-      properties: {},
-      geometry: routeGeometry ?? {
-        type: "LineString",
-        coordinates: coordinates.map((c) => [c.longitude, c.latitude]),
-      },
-    };
+    const passStops = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
+      () => ({
+        type: "FeatureCollection",
+        features: stops
+          .filter((s) => s.kind === "pass")
+          .map((s) => ({
+            type: "Feature",
+            properties: { color: s.color },
+            geometry: { type: "Point", coordinates: [s.lng, s.lat] },
+          })),
+      }),
+      [stops],
+    );
+
+    if (segments.length === 0) return null;
+    const start = segments[0].coords[0];
+    const initialBounds = boundsOf(segments.flatMap((s) => s.coords));
+
+    const widthExpr = ["case", ["get", "active"], 7, 5] as unknown as number;
+    const opacityExpr = ["case", ["get", "active"], 1, 0.45] as unknown as number;
 
     return (
       <View style={styles.container}>
-        {/* Task App-17: akar masalah "lingkaran aneh muncul saat zoom/geser
-            peta" — BUKAN lingkaran radius akurasi GPS (UserLocation di
-            bawah tidak pernah mengaktifkan prop `accuracy`, jadi layer
-            lingkaran itu memang tidak pernah dibuat sama sekali, dicek
-            langsung dari source @maplibre/maplibre-react-native). Yang
-            sebenarnya: ikon KOMPAS milik MapLibre sendiri. `touchRotate`
-            (gestur putar 2-jari) default AKTIF, dan kompas defaultnya cuma
-            tersembunyi persis saat peta menghadap utara (bearing 0°) —
-            gestur pinch-zoom dengan jari manusia nyaris selalu sedikit
-            memutar peta (susah sinkron sempurna), jadi begitu bearing
-            bergeser dikit dari 0°, ikon kompas (bentuknya lingkaran)
-            langsung muncul di pojok. Matikan rotasi via gestur sekalian —
-            peta navigasi turn-by-turn memang tidak butuh bebas diputar
-            manual (rute tetap terbaca dari North-up), dan itu mencegah
-            AKAR masalahnya (bearing tidak akan pernah bergeser), bukan
-            cuma menyembunyikan gejalanya.
-
-            Task App-18: investigasi lanjutan — bug lain yang dilaporkan
-            ("gestur 2 jari terasa kurang presisi/gampang muter-miring
-            sendiri saat cuma bermaksud geser") adalah SIMPTOM DARI GESTUR
-            YANG SAMA, cuma sisi lain darinya: MapLibre menafsirkan satu
-            gestur 2-jari kontinu sebagai kombinasi pan+zoom+rotate+pitch
-            sekaligus (konvensi umum Mapbox/MapLibre GL). Jari manusia
-            jarang bergerak murni translasi lurus tanpa sedikit
-            memutar/menekan — touchRotate sudah dimatikan di atas
-            (App-17), tapi `touchPitch` (gestur tilt 3D, biasanya trigger
-            dari drag 2-jari VERTIKAL) masih default aktif dan BELUM
-            disentuh App-17 (App-17 cuma fokus ke gejala "lingkaran",
-            bukan soal presisi pan). App ini tidak pernah menampilkan
-            peta miring 3D di mana pun — mematikan touchPitch murni
-            menghilangkan satu sumber "noise" gestur yang bikin pan
-            terasa kurang presisi, tanpa kehilangan fitur yang dipakai. */}
         <Map
           mapStyle={OPENFREEMAP_DARK_STYLE}
           style={styles.map}
@@ -160,60 +115,79 @@ const NavigateMap = forwardRef<NavigateMapHandle, NavigateMapProps>(
         >
           <Camera
             ref={cameraRef}
-            initialViewState={{ center: initialCenter, zoom: 15 }}
+            initialViewState={
+              initialBounds
+                ? { bounds: initialBounds, padding: { top: 140, bottom: 260, left: 40, right: 40 } }
+                : { center: start, zoom: 15 }
+            }
           />
 
           <UserLocation animated />
 
-          <GeoJSONSource id="navigateRoute" data={routeLine}>
-            {/* `style` di sini deprecated di v11 (disarankan paint/layout),
-                tapi masih berfungsi penuh sampai v12 — dipakai apa adanya
-                karena paling ringkas untuk satu garis statis seperti ini. */}
+          <GeoJSONSource id="navLegs" data={lines}>
             <Layer
-              id="navigateRouteLine"
+              id="navLegsCasing"
               type="line"
-              source="navigateRoute"
-              style={{
-                lineColor: "#00875A",
-                lineWidth: 5,
-                lineCap: "round",
-                lineJoin: "round",
+              filter={["==", ["get", "dashed"], false]}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{ "line-color": "#0A0A0B", "line-width": 10, "line-opacity": opacityExpr }}
+            />
+            <Layer
+              id="navLegsSolid"
+              type="line"
+              filter={["==", ["get", "dashed"], false]}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": ["get", "color"] as unknown as string,
+                "line-width": widthExpr,
+                "line-opacity": opacityExpr,
+              }}
+            />
+            <Layer
+              id="navLegsWalk"
+              type="line"
+              filter={["==", ["get", "dashed"], true]}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "#D4D4D8",
+                "line-width": widthExpr,
+                "line-opacity": opacityExpr,
+                "line-dasharray": [0.1, 2],
               }}
             />
           </GeoJSONSource>
 
-          {coordinates.map((coord, index) => {
-            const isActive = isFinished
-              ? index === coordinates.length - 1
-              : index === currentStepIndex;
-            const isOrigin = index === 0;
+          <GeoJSONSource id="navPassStops" data={passStops}>
+            <Layer
+              id="navPassStopsCircle"
+              type="circle"
+              paint={{
+                "circle-radius": 4,
+                "circle-color": "#18181B",
+                "circle-stroke-width": 2,
+                "circle-stroke-color": ["get", "color"] as unknown as string,
+              }}
+            />
+          </GeoJSONSource>
 
-            return (
-              <Marker
-                key={`marker-${index}`}
-                id={`marker-${index}`}
-                lngLat={[coord.longitude, coord.latitude]}
-              >
-                <View
-                  style={[
-                    styles.markerDot,
-                    {
-                      width: isActive ? 24 : 16,
-                      height: isActive ? 24 : 16,
-                      borderRadius: isActive ? 12 : 8,
-                      backgroundColor: isOrigin
-                        ? "#EF4444"
-                        : isActive
-                          ? "#00875A"
-                          : "#6B7280",
-                      borderWidth: isActive ? 2.5 : 1.5,
-                      opacity: isActive || isOrigin ? 1 : 0.75,
-                    },
-                  ]}
-                />
+          {/* Titik naik/turun/pindah moda + tujuan: Marker dengan label nama
+              (jumlahnya sedikit, jadi aman sebagai view RN). */}
+          {stops
+            .filter((s) => s.kind !== "pass")
+            .map((s, i) => (
+              <Marker key={`stop-${i}`} id={`stop-${i}`} lngLat={[s.lng, s.lat]}>
+                <View style={styles.stopWrap}>
+                  {s.kind === "destination" ? (
+                    <Ionicons name="location" size={28} color="#EF4444" />
+                  ) : (
+                    <View style={[styles.stopDot, { backgroundColor: s.color }]} />
+                  )}
+                  <Text style={styles.stopLabel} numberOfLines={1}>
+                    {s.name}
+                  </Text>
+                </View>
               </Marker>
-            );
-          })}
+            ))}
         </Map>
       </View>
     );
@@ -221,23 +195,30 @@ const NavigateMap = forwardRef<NavigateMapHandle, NavigateMapProps>(
 );
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#18181B",
-  },
+  container: { flex: 1, backgroundColor: "#18181B" },
   // Eksplisit, bukan StyleSheet.absoluteFillObject — properti itu sudah
   // tidak ada di typing react-native 0.86 (lihat catatan Task App-03).
-  map: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  },
-  markerDot: {
+  map: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
+  stopWrap: { alignItems: "center" },
+  stopDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 3,
     borderColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
+  },
+  stopLabel: {
+    fontFamily: "Plus-Jakarta-Sans",
+    marginTop: 2,
+    maxWidth: 160,
+    color: "#F4F4F5",
+    fontSize: 11,
+    fontWeight: "600",
+    backgroundColor: "rgba(24,24,27,0.9)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: "hidden",
   },
 });
 

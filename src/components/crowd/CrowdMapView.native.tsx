@@ -131,7 +131,7 @@ export default function CrowdMapView({ stops, onReportStop }: CrowdMapViewProps)
               hitSlop={12}
               accessibilityLabel="Tutup info halte"
             >
-              <Ionicons name="close" size={18} color="#A1A1AA" />
+              <Ionicons name="close" size={18} color="#737373" />
             </Pressable>
           </View>
 
@@ -227,11 +227,11 @@ const styles = StyleSheet.create({
     borderColor: "#FFFFFF",
   },
   infoLevelText: {
-    color: "#E4E4E7",
+    color: "#404040",
     fontSize: 13,
   },
   infoMeta: {
-    color: "#A1A1AA",
+    color: "#737373",
     fontSize: 12,
   },
   reportButton: {
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#00875A",
+    backgroundColor: "#018959",
     borderRadius: 10,
     paddingVertical: 9,
     marginTop: 4,

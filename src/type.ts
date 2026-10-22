@@ -5,6 +5,23 @@ export interface Leg {
   service?: string;
   from: string;
   to: string;
+  // Data navigasi dari backend (OTP2) — lihat RouteLeg di skema backend.
+  // Optional: RouteItem lama (history/cache) tidak punya field ini.
+  from_coord?: { lat: number; lng: number };
+  to_coord?: { lat: number; lng: number };
+  headsign?: string;
+  path?: Array<[number, number]>; // [lat, lng]
+  stops_passed?: Array<{ name: string; lat: number; lng: number }>;
+  walk_steps?: Array<{
+    distance_m: number;
+    direction: string;
+    street: string;
+    lat?: number;
+    lng?: number;
+  }>;
+  depart_at?: string;
+  arrive_at?: string;
+  distance_m?: number;
 }
 
 export interface CrowdInfo {

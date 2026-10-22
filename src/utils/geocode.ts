@@ -196,6 +196,32 @@ export interface PlaceSuggestion {
   primaryText: string;
   secondaryText: string;
   coordinate: Coordinate;
+  // "station" = halte/stasiun dari GTFS backend (lihat
+  // services/stationSearchService.ts), "place" = alamat/POI Nominatim.
+  kind?: "station" | "place";
+  icon?: string; // nama Ionicons
+  color?: string;
+}
+
+/**
+ * Label ringkas untuk judul layar: alamat Nominatim penuh ("Jalan
+ * Palatehan, Blok K, Melawai, Kebayoran Baru, Jakarta Selatan, ...") dipotong
+ * ke dua bagian pertama. Nama halte/stasiun kita tidak berkoma, jadi utuh.
+ */
+export function shortPlaceLabel(label: string): string {
+  // "Lokasi Anda saat ini (-6.2, 106.8)" — koma di dalam kurung bukan pemisah.
+  if (label.includes("(")) return label;
+  const parts = label.split(",").map((s) => s.trim()).filter(Boolean);
+  return parts.slice(0, 2).join(", ") || label;
+}
+
+/**
+ * Catat koordinat sebuah label yang sudah pasti (saran yang di-tap, lokasi
+ * GPS, Tujuan Cepat) supaya geocodePlace(label) tidak menebak ulang lewat
+ * pencarian teks — tebakan itu bisa jatuh ke tempat lain yang senama.
+ */
+export function rememberPlace(label: string, coordinate: Coordinate): void {
+  geocodeCache.set(label, coordinate);
 }
 
 function splitDisplayName(displayName: string): {
@@ -271,6 +297,7 @@ export async function searchPlaceSuggestions(
       return {
         displayName: r.display_name,
         coordinate,
+        kind: "place" as const,
         ...splitDisplayName(r.display_name),
       };
     },

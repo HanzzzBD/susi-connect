@@ -48,9 +48,9 @@ function getLineKind(trimmed: string): LineKind {
 }
 
 const HEADING_STYLE: Record<"h1" | "h2" | "h3", { className: string; marginTop: number }> = {
-  h1: { className: "text-light-1 font-bold text-base", marginTop: 4 },
-  h2: { className: "text-light-1 font-bold text-sm", marginTop: 4 },
-  h3: { className: "text-light-1 font-bold text-sm", marginTop: 2 },
+  h1: { className: "text-ink font-bold text-base", marginTop: 4 },
+  h2: { className: "text-ink font-bold text-sm", marginTop: 4 },
+  h3: { className: "text-ink font-bold text-sm", marginTop: 2 },
 };
 
 export default function AssistantAnswerText({ text }: { text: string }) {
@@ -80,7 +80,7 @@ export default function AssistantAnswerText({ text }: { text: string }) {
             >
               {spans.map((span, spanIndex) =>
                 span.bold ? (
-                  <Text key={spanIndex} className="font-bold text-light-1">
+                  <Text key={spanIndex} className="font-bold text-ink">
                     {span.text}
                   </Text>
                 ) : (
@@ -100,14 +100,14 @@ export default function AssistantAnswerText({ text }: { text: string }) {
             key={index}
             className={isBullet ? "flex-row gap-2 pl-1" : undefined}
           >
-            {isBullet && <Text className="text-light-2 text-sm">•</Text>}
+            {isBullet && <Text className="text-ink-2 text-sm">•</Text>}
             <Text
-              className="text-light-1 text-sm flex-1"
+              className="text-ink text-sm flex-1"
               style={{ lineHeight: 21 }}
             >
               {spans.map((span, spanIndex) =>
                 span.bold ? (
-                  <Text key={spanIndex} className="font-bold text-light-1">
+                  <Text key={spanIndex} className="font-bold text-ink">
                     {span.text}
                   </Text>
                 ) : (

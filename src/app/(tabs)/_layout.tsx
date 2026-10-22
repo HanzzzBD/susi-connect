@@ -5,7 +5,7 @@ export default function TabsLayout() {
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: "#001C43" } }}
       // Task App-12: default bawaan Tabs navigator adalah "firstRoute"
       // (selalu balik ke tab pertama, terlepas dari tab mana yang benar-benar
       // dikunjungi sebelumnya) — bukan "history" seperti yang biasa diasumsikan.
