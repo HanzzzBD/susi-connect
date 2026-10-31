@@ -1,7 +1,7 @@
 # TASKS SUSI Connect — Rincian Task per Fitur
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 1.4 · **Pemilik:** PM
-**Sumber:** PRD v3.3 · SDD v3.3 · DESIGN v1.1 · API v1.2 · UI-SPEC v2.2 · AI-PROMPTS v1.1 · TICKETS v2.3 · AUDIT-SMARTROUTE-APP v1.0
+**Tanggal:** 22 Oktober 2026 · **Versi:** 1.5 · **Pemilik:** PM
+**Sumber:** PRD v4.0 · SDD v4.0 · DESIGN v1.1 · API v1.3 · UI-SPEC v3.0 · AI-PROMPTS v1.1 · TICKETS v3.0 · AUDIT-SMARTROUTE-APP v1.1
 
 ## Log Perubahan
 
@@ -12,13 +12,14 @@
 | 1.2 | 22 Okt 2026 | Audit smartroute-app: task mobile memakai ulang app SmartRoute (subtree, ganti identitas, pangkas transit); task tema mobile diganti palet app SmartRoute. |
 | 1.3 | 22 Okt 2026 | Detail task mobile menyebut file app SmartRoute yang dipakai ulang (apiConfig, withTimeout, CustomTabBar, crowd-map, currentLocation, NavPanel, assistant), nama env `EXPO_PUBLIC_API_BASE_URL`, paket yang perlu ditambah, dan penghapusan ngrok/Nominatim. |
 | 1.4 | 22 Okt 2026 | Penanda **Dari app SmartRoute** di setiap task (Sebagian / Pola / Baru) beserta file asalnya, juga sebagai kolom di `tasks.csv` untuk filter di GitHub Projects. |
+| 1.5 | 22 Okt 2026 | Perluasan MVP: fitur M15 (rute moda umum dari SmartRoute), M16 (admin mobile), M17 (push); task Should S02, S03, S05 kini punya tiket (MB-27, FS-35, MB-26); task pangkas tidak lagi menghapus layar rute. |
 
 ## Cara pakai
 
 - **Satu task = satu langkah kerja yang bisa dicentang**, bagian dari satu tiket (kolom *Tiket*). Pemilik & hari mengikuti tiket induknya di TICKETS.md.
 - Task dianggap selesai bila detail kecilnya terpenuhi **dan** kriteria Given/When/Then PRD §9 terkait lulus. Tiket selesai bila semua task-nya tercentang + DoD umum (TICKETS §1).
 - Tampilan **wajib** memakai resep DESIGN.md (token semantik, dua tema). Teks UI, validasi, dan kode galat **wajib persis** dokumen rujukan; bila berbeda, ubah dokumennya dulu (PR `docs`).
-- Task bertanda tiket "—" adalah **Should yang belum terjadwal** (TICKETS §0).
+- Sejak v1.5 semua task (termasuk Should S01–S06) sudah punya tiket terjadwal.
 - **Dari app SmartRoute** (AUDIT-SMARTROUTE-APP.md): **Sebagian** = kode di `smartroute/` (setelah subtree menjadi `mobile/`) dipakai lalu diubah — buka file asalnya dulu sebelum menulis baru; **Pola** = hanya susunan/gaya yang ditiru; task tanpa penanda = **Baru** (ditulis dari nol). Tidak ada task yang sudah selesai sepenuhnya: pekerjaan yang benar-benar sudah ada (init Expo, NativeWind, plugin MapLibre & lokasi, font, `usesCleartextTraffic`, profil EAS) sudah tidak dijadikan task.
 
 **Lapisan:** `DB` Database · `API` Endpoint · `SVC` Logika backend · `AI` AI · `WEB` Web UI · `MOB` Mobile UI · `UX` UX & teks · `DATA` Data · `TEST` Uji · `OPS` Ops/DevOps
@@ -42,6 +43,9 @@
 | M12 | Chatbot FAQ | P1 | 5 |
 | M13 | Transparansi AI | etika | 8 |
 | M14 | Mode demo, seed sintetis, offline & jaringan | demo | 14 |
+| M15 | Rekomendasi moda untuk umum (mesin rute SmartRoute) | P5 | 10 |
+| M16 | Panel admin di aplikasi mobile | admin | 4 |
+| M17 | Notifikasi push + cadangan in-app | P1 | 6 |
 | S01 | Hambatan dari warga + konfirmasi (Should) | P5 | 2 |
 | S02 | Perbandingan moda ke lokasi aksi (Should) | P5 | 2 |
 | S03 | Deteksi duplikat (Should) | P1 | 2 |
@@ -49,9 +53,9 @@
 | S05 | Samarkan wajah/plat manual (Should) | privasi | 1 |
 | S06 | Notifikasi in-app (Should, dijadwalkan) | P1 | 4 |
 | X | Lintas fitur: tema, komponen, aksesibilitas, demo & submission | — | 21 |
-| | **Total** | | **218** |
+| | **Total** | | **238** |
 
-**Dari app SmartRoute:** 18 task **Sebagian**, 4 task **Pola**, 196 task **Baru**.
+**Dari app SmartRoute:** 25 task **Sebagian**, 4 task **Pola**, 209 task **Baru**.
 
 ## F0 — Fondasi repo, lingkungan & kerangka
 
@@ -68,7 +72,7 @@ Problem: semua
 - [ ] **F0-09** `DB` **`db/migrate.js` + skrip `npm run db:migrate`** — Baca `../../db/migrations`, satu transaksi per file, catat `schema_migrations`, berhenti di file gagal. *Rujukan:* SDD §5.3. *Tiket:* BE-02 · BE · Sab 7
 - [ ] **F0-10** `TEST` **Uji migrasi dari DB kosong** — Jalankan 001–005 di `susi` & `susi_test`; jalankan dua kali (idempoten di level migrate.js). *Rujukan:* SDD §5.3. *Tiket:* BE-02 · BE · Sab 7
 - [ ] **F0-11** `TEST` **Harness uji API** — `tests/api/_setup.js`: migrasi + seed ke `susi_test`, helper `loginAs(persona)`, tabel route untuk RBAC. *Rujukan:* SDD §11. *Tiket:* BE-05 · BE · Min 8
-- [ ] **F0-12** `OPS` **CI GitHub Actions** — Job backend (service postgres, migrate, `npm test`), job web (lint + `npm run build`), job mobile (`tsc --noEmit` + lint); jalan di setiap PR. *Rujukan:* SDD §11, §12. *Tiket:* BE-26 · BE · Jum 13
+- [ ] **F0-12** `OPS` **CI GitHub Actions** — Job backend (service postgres, migrate, `npm test`), job web (lint + `npm run build`), job mobile (`tsc --noEmit` + lint); jalan di setiap PR. *Rujukan:* SDD §11, §12. *Tiket:* BE-26 · BE · Sab 7
 - [ ] **F0-13** `WEB` **Bersihkan frontend lama tanpa membuang UI** — Hapus `data/stations.json`, aset contoh, tipe stasiun di `services/api.ts`, `useStations`, `FlagContext`, `FlagProvider` ganda, axios, react-device-detect. *Rujukan:* SDD §2.3. *Tiket:* FS-01 · FS · Sab 7
 - [ ] **F0-14** `WEB` **Font lokal** — Ganti 3 `<link>` Google Fonts di `index.html` dengan fontsource Plus Jakarta Sans & Source Code Pro (T13). *Rujukan:* SDD §2.1 T13. *Tiket:* FS-01 · FS · Sab 7
 - [ ] **F0-15** `WEB` **Rename paket & metadata** — `package.json` name `susi-web`; `<html lang="id">`; judul "SUSI Connect"; favicon baru. *Rujukan:* SDD §2.3. *Tiket:* FS-01 · FS · Sab 7
@@ -78,7 +82,7 @@ Problem: semua
 - [ ] **F0-19** `WEB` **`lib/apiClient.ts` web** — Fungsi `api<T>()`, `ApiError`, event `auth:expired` saat 401, `fileUrl()` dengan `?token=`. *Rujukan:* SDD §8.2. *Tiket:* FS-02 · FS · Sab 7
 - [ ] **F0-20** `MOB` **Subtree app SmartRoute ke `mobile/`** — `git subtree split --prefix=smartroute` di clone smartroute-app lalu `git subtree add --prefix=mobile`; riwayat tercatat. *Rujukan:* AUDIT §4, SDD §4.1. *Tiket:* MB-01 · FS · Sab 7 · ♻ *Sebagian dari app SmartRoute:* `smartroute/ (seluruh app)`
 - [ ] **F0-21** `MOB` **Ganti identitas aplikasi** — `app.json` name/slug/scheme/`android.package`/owner/`extra.eas.projectId`, ikon & splash SUSI, teks izin lokasi UI-SPEC M. *Rujukan:* AUDIT §4. *Tiket:* MB-01 · FS · Sab 7 · ♻ *Sebagian dari app SmartRoute:* `app.json, eas.json, assets/`
-- [ ] **F0-22** `MOB` **Pangkas fitur transit** — Hapus layar/komponen/servis/utils transit, Nominatim, react-native-maps, ngrok (daftar AUDIT §4); `tsc --noEmit` hijau. *Rujukan:* AUDIT §4. *Tiket:* MB-01 · FS · Sab 7 · ♻ *Sebagian dari app SmartRoute:* `daftar AUDIT §4`
+- [ ] **F0-22** `MOB` **Pangkas fitur kepadatan & aset SmartRoute** — Hapus laporan kepadatan (`crowdService`, modal kepadatan, `RealTimeInfoCard`), `mockRoutes`, ngrok, `react-native-maps`; **pertahankan** layar rute/navigasi/halte untuk M15; `tsc --noEmit` hijau. *Rujukan:* AUDIT §4 v1.1. *Tiket:* MB-01 · FS · Sab 7 · ♻ *Sebagian dari app SmartRoute:* `daftar AUDIT §4 v1.1`
 - [ ] **F0-23** `MOB` **Konfigurasi alias `@shared/*` di Metro/Babel** — `watchFolders` ke `../shared`; uji impor `labels` dari layar contoh. *Rujukan:* SDD §4.1. *Tiket:* MB-02 · FS · Min 8
 - [ ] **F0-24** `MOB` **`mobile/src/services/apiClient.ts`** — Antarmuka sama dengan web, di atas `fetchWithTimeout` (`src/utils/withTimeout.ts` app SmartRoute); token SecureStore; base URL dari `apiConfig.ts`; upload `FormData {uri,name,type}`. *Rujukan:* SDD §8A.3. *Tiket:* MB-02 · FS · Min 8 · ♻ *Sebagian dari app SmartRoute:* `src/utils/withTimeout.ts`
 - [ ] **F0-25** `MOB` **`mobile/.env.example`** — EXPO_PUBLIC_API_BASE_URL (nama dari app SmartRoute, tanpa `/api`), EXPO_PUBLIC_API_FALLBACK_URL, EXPO_PUBLIC_MAP_STYLE, EXPO_PUBLIC_DEMO_MODE; hapus URL ngrok dari `eas.json`. *Rujukan:* SDD §8A.6. *Tiket:* MB-02 · FS · Min 8 · ♻ *Sebagian dari app SmartRoute:* `src/services/apiConfig.ts, eas.json`
@@ -237,7 +241,7 @@ Problem: P5
 - [ ] **M09-04** `TEST` **`unit/geo.test.js`, `unit/route.test.js` (ORS di-mock), `api/routes.test.js`, `api/obstacles.test.js`** — Rute berubah saat hambatan ditambah; kedaluwarsa diabaikan; cache kena setelah hambatan dibuat ulang; 403 bukan anggota. *Rujukan:* PRD M09. *Tiket:* BE-18 · BE · Kam 12
 - [ ] **M09-05** `MOB` **MapView MapLibre RN v11** — Turunkan dari CrowdMapView/NavigateMap (`Map`, `Camera`, `Marker`, `GeoJSONSource`): marker laporan, poligon hambatan, garis rute (abu-abu bila straight). *Rujukan:* SDD §8A.5, AUDIT §3.1. *Tiket:* MB-06 · FS · Sel 10 · ♻ *Sebagian dari app SmartRoute:* `src/components/crowd/CrowdMapView.native.tsx, src/components/transit/AllStopsMapView.native.tsx, src/components/navigate/NavigateMap.native.tsx`
 - [ ] **M09-06** `MOB` **Tab "Rute" di detail aksi** — Pola `NavPanel.tsx` app SmartRoute; asal "Lokasi saya"/"Titik kumpul", tujuan "Lokasi masalah"/"Lokasi → titik buang", moda; "x km · ± y menit (perkiraan)"; lencana sumber; "Menghindari n hambatan: …". *Rujukan:* UI-SPEC S11. *Tiket:* MB-15 · FS · Jum 13 · ♻ *Sebagian dari app SmartRoute:* `src/components/navigate/NavPanel.tsx`
-- [ ] **M09-07** `MOB` **Hambatan M-S13** — Panel Aktif/Menunggu, tekan lama di peta untuk menaruh titik, form jenis/radius 10–500/keterangan/berlaku sampai, cabut. *Rujukan:* UI-SPEC S13, M. *Tiket:* MB-17 · DA · Jum 13
+- [ ] **M09-07** `MOB` **Hambatan M-S13** — Panel Aktif/Menunggu, tekan lama di peta untuk menaruh titik, form jenis/radius 10–500/keterangan/berlaku sampai, cabut. *Rujukan:* UI-SPEC S13, M. *Tiket:* MB-17 · DA · Kam 12
 - [ ] **M09-08** `UX` **Teks rute & hambatan** — Kotak kuning garis lurus; "Izin lokasi ditolak. Rute dihitung dari titik kumpul."; "Maksimal 30 hari"; lencana "Kedaluwarsa" abu-abu. *Rujukan:* UI-SPEC S11, S13. *Tiket:* MB-15 · FS · Jum 13
 - [ ] **M09-09** `WEB` **`ObstaclePanel` baca-saja di peta web** — Dari FlaggedStationsPanel lama, tab Aktif/Menunggu. *Rujukan:* UI-SPEC §0. *Tiket:* FS-21 · FS · Sel 10
 - [ ] **M09-10** `DATA` **Titik hambatan demo** — Koordinat & radius yang memotong rute Pos RW 05 → lokasi → TPS; H01 di luar rute. *Rujukan:* DEMO-SCRIPT T4, PRD §12.6. *Tiket:* PM-10 · PM · Rab 11
@@ -268,17 +272,17 @@ Problem: P4
 - [ ] **M11-06** `WEB` **`SyntheticBanner`** — "Angka ini berasal dari data sintetis untuk demo, bukan dampak nyata.". *Rujukan:* UI-SPEC S02, S14. *Tiket:* DA-15 · DA · Jum 13
 - [ ] **M11-07** `WEB` **Peta publik S02** — `MapClusterLayer` dari R3; QueuePanel "Ringkasan" berisi 4 KPI; filter status; catatan privasi. *Rujukan:* UI-SPEC S02. *Tiket:* FS-21 · FS · Sel 10
 - [ ] **M11-08** `MOB` **Dampak M-S14** — 4 KPI + ringkasan status dari breakdown. *Rujukan:* UI-SPEC M. *Tiket:* MB-19 · PM · Kam 12
-- [ ] **M11-09** `MOB` **Peta & beranda M-S02** — Turunkan `crowd-map.tsx` app SmartRoute: peta laporan publik/sendiri, bottom sheet ringkasan, tombol "+ Lapor". *Rujukan:* UI-SPEC M, AUDIT §3.1. *Tiket:* MB-07 · DA · Jum 13 · ♻ *Sebagian dari app SmartRoute:* `src/app/crowd-map.tsx`
-- [ ] **M11-10** `DATA` **Validasi angka dashboard** — Bandingkan K1 dengan SQL manual setelah alur demo. *Rujukan:* SDD §11. *Tiket:* DA-16 · DA · Jum 13
+- [ ] **M11-09** `MOB` **Peta & beranda M-S02** — Turunkan `crowd-map.tsx` app SmartRoute: peta laporan publik/sendiri, bottom sheet ringkasan, tombol "+ Lapor". *Rujukan:* UI-SPEC M, AUDIT §3.1. *Tiket:* MB-07 · FS · Jum 13 · ♻ *Sebagian dari app SmartRoute:* `src/app/crowd-map.tsx`
+- [ ] **M11-10** `DATA` **Validasi angka dashboard** — Bandingkan K1 dengan SQL manual setelah alur demo. *Rujukan:* SDD §11. *Tiket:* DA-16 · DA · Kam 12
 
 ## M12 — Chatbot FAQ
 
 Problem: P1
 
 - [ ] **M12-01** `DATA` **`faq.md` final** — ≥ 12 bagian `## [faq-<id>] Judul`; tanpa janji waktu layanan. *Rujukan:* AI-PROMPTS §6.1. *Tiket:* PM-03 · PM · Min 8
-- [ ] **M12-02** `AI` **Prompt `faq` + fallback kata kunci** — Judul ×3, isi ×1, ambil bagian skor ≥ 2. *Rujukan:* AI-PROMPTS §6.1, §7.5. *Tiket:* BE-20 · BE · Rab 11
-- [ ] **M12-03** `API` **C4 `POST /chat/faq`** — Publik, rate limit per IP, `history` ≤ 6. *Rujukan:* API C4. *Tiket:* BE-20 · BE · Rab 11
-- [ ] **M12-04** `TEST` **`api/faq.test.js`, `unit/faqFallback.test.js`** — Di luar cakupan, niat melapor, 429. *Rujukan:* PRD M12. *Tiket:* BE-20 · BE · Rab 11
+- [ ] **M12-02** `AI` **Prompt `faq` + fallback kata kunci** — Judul ×3, isi ×1, ambil bagian skor ≥ 2. *Rujukan:* AI-PROMPTS §6.1, §7.5. *Tiket:* BE-20 · BE · Sen 9
+- [ ] **M12-03** `API` **C4 `POST /chat/faq`** — Publik, rate limit per IP, `history` ≤ 6. *Rujukan:* API C4. *Tiket:* BE-20 · BE · Sen 9
+- [ ] **M12-04** `TEST` **`api/faq.test.js`, `unit/faqFallback.test.js`** — Di luar cakupan, niat melapor, 429. *Rujukan:* PRD M12. *Tiket:* BE-20 · BE · Sen 9
 - [ ] **M12-05** `MOB` **Layar Bantuan (M-S18)** — Turunan layar asisten app SmartRoute ke endpoint C4; saran cepat 3 pertanyaan, jawaban + "Sumber: <bagian FAQ>", tombol "Lapor lewat chat" bila `niat_melapor`. *Rujukan:* UI-SPEC S18. *Tiket:* MB-20 · PM · Rab 11 · ♻ *Sebagian dari app SmartRoute:* `src/app/assistant.tsx, src/services/assistantService.ts`
 
 ## M13 — Transparansi AI
@@ -313,38 +317,73 @@ Problem: demo
 - [ ] **M14-13** `TEST` **Uji mobile menyeluruh** — GWT inti di 2 HP Android (+ iPhone bila ada) lewat Cloudflare & hotspot. *Rujukan:* TICKETS MB-24. *Tiket:* MB-24 · BE · Sab 14
 - [ ] **M14-14** `OPS` **Build APK rilis & iOS** — APK rilis; iOS dev build bila PRE-15 menyatakan bisa; catat di README. *Rujukan:* SDD §8A.7. *Tiket:* MB-23 · FS · Sab 14 · ♻ *Sebagian dari app SmartRoute:* `eas.json`
 
+## M15 — Rekomendasi moda untuk umum (mesin rute SmartRoute)
+
+Problem: P5
+
+- [ ] **M15-01** `OPS` **Subtree layanan SmartRoute ke `mobility/`** — `git subtree split --prefix=backend` di smartroute-app lalu `git subtree add --prefix=mobility`; hanya `backend-skeleton` & `otp2-setup` yang dipakai. *Rujukan:* SDD §4.2, D21. *Tiket:* PRE-18 · FS · PRE · ♻ *Sebagian dari app SmartRoute:* `smartroute-app/backend/backend-skeleton, otp2-setup`
+- [ ] **M15-02** `OPS` **Bangun graph OTP2 & jalankan layanan** — `otp2-setup`: clip-osm, build-graph (graph ± 205 MB, tidak di git), `docker compose up`; `backend-skeleton` `npm run dev`; catat RAM/disk laptop demo & cadangan. *Rujukan:* SDD §4.2, PRD R20. *Tiket:* PRE-18 · FS · PRE · ♻ *Sebagian dari app SmartRoute:* `smartroute-app/backend/otp2-setup/scripts/*`
+- [ ] **M15-03** `API` **V1–V3 proxy `/api/mobility/*`** — `routes/mobility.routes.js`: requireAuth, rate limit 30/menit, teruskan ke `MOBILITY_URL` (timeout 15 dtk), envelope SUSI, 503 `MOBILITY_UNAVAILABLE`. *Rujukan:* API §13A. *Tiket:* MV-01 · BE · Min 8
+- [ ] **M15-04** `TEST` **`api/mobility.test.js`** — Layanan di-mock: sukses V1–V3, 401 tanpa token, 503 saat layanan mati, 400 diteruskan. *Rujukan:* PRD M15-4/5. *Tiket:* MV-01 · BE · Min 8
+- [ ] **M15-05** `MOB` **Arahkan layar rute ke proxy SUSI** — `routeService`/`stationSearchService`/`nearbyStopsService` memakai `apiClient` (`/api/mobility/*`) dan token SUSI. *Rujukan:* SDD §8A.3. *Tiket:* MV-04 · FS · Kam 12 · ♻ *Sebagian dari app SmartRoute:* `src/services/routeService.ts, stationSearchService.ts, nearbyStopsService.ts`
+- [ ] **M15-06** `MOB` **Tab "Rute" (M-S20/M-S21)** — Pertahankan layar cari rute, hasil Terbaik/Termurah/Tercepat/Ternyaman, detail & navigasi; masuk tab Rute warga & relawan. *Rujukan:* UI-SPEC M-S20/M-S21. *Tiket:* MV-04 · FS · Kam 12 · ♻ *Sebagian dari app SmartRoute:* `src/app/(tabs)/index.tsx, src/app/(tabs)/route/*, src/app/navigate.tsx`
+- [ ] **M15-07** `MOB` **Pencarian lokasi offline** — Bila Nominatim gagal/offline → saran dari V2 (halte/stasiun). *Rujukan:* PRD M15-3. *Tiket:* MV-04 · FS · Kam 12 · ♻ *Sebagian dari app SmartRoute:* `src/utils/geocode.ts, src/hooks/useStopSearch.ts`
+- [ ] **M15-08** `MOB` **Tombol dari detail aksi** — "Rute angkutan umum ke lokasi" membuka M-S20 dengan tujuan = lokasi aksi. *Rujukan:* PRD M15-6. *Tiket:* MV-04 · FS · Kam 12
+- [ ] **M15-09** `UX` **Teks & label rute SUSI** — `ComparisonCard`, `RouteCard`, `RouteDetailCard`, `PreferenceCard`: label Indonesia SUSI, "perkiraan" + sumber jadwal/tarif, tanpa nama SmartRoute. *Rujukan:* UI-SPEC M-S21. *Tiket:* MV-02 · DA · Min 8 · ♻ *Sebagian dari app SmartRoute:* `src/components/ComparisonCard.tsx, RouteCard.tsx, RouteDetailCard.tsx, PreferenceCard.tsx`
+- [ ] **M15-10** `TEST` **Regresi rute** — 10 pasangan titik DKI lewat proxy, hasil apa adanya di `docs/notes/mobility-regresi.md`. *Rujukan:* TICKETS MV-03. *Tiket:* MV-03 · DA · Sen 9 · ♻ *Sebagian dari app SmartRoute:* `smartroute-app/backend/backend-skeleton/scripts/regression-routes.mjs`
+
+## M16 — Panel admin di aplikasi mobile
+
+Problem: admin
+
+- [ ] **M16-01** `MOB` **Tab admin & navigasi** — Tab Pengguna · Komunitas · Log AI · Lainnya (Kanal instansi, Laporan ditolak); hanya `role=admin`. *Rujukan:* UI-SPEC M0, M-S22. *Tiket:* MB-28 · PM · Min 8
+- [ ] **M16-02** `MOB` **Pengguna & Log AI** — U1–U3 daftar + form layar penuh (validasi sama dengan S17), U4 log tanpa PII. *Rujukan:* UI-SPEC M-S22. *Tiket:* MB-28 · PM · Min 8
+- [ ] **M16-03** `MOB` **Komunitas, kanal instansi, laporan ditolak** — G1–G6, H1–H3, R9 "Buka ulang" + alasan 5–300. *Rujukan:* UI-SPEC M-S22. *Tiket:* MB-29 · DA · Jum 13
+- [ ] **M16-04** `TEST` **Uji manual admin mobile** — GWT M16-1…5 di HP. *Rujukan:* PRD M16. *Tiket:* MB-29 · DA · Jum 13
+
+## M17 — Notifikasi push + cadangan in-app
+
+Problem: P1
+
+- [ ] **M17-01** `OPS` **Firebase & kredensial FCM di EAS** — Proyek Firebase, FCM V1 di `eas credentials`; catat syarat iOS (akun Apple). *Rujukan:* SDD D22. *Tiket:* PRE-19 · FS · PRE
+- [ ] **M17-02** `DB` **Migrasi 006** — `push_tokens`, `notifications.push_status/pushed_at` (sudah diuji di PostgreSQL 18). *Rujukan:* db/migrations/006_push.sql. *Tiket:* BE-29 · BE · Rab 11
+- [ ] **M17-03** `API` **N4 & N5 token push** — Upsert token milik sendiri; nonaktifkan saat keluar; token orang lain → 404. *Rujukan:* API N4–N5. *Tiket:* BE-29 · BE · Rab 11
+- [ ] **M17-04** `SVC` **`push.service.sendForNotifications`** — Setelah commit `notification.enqueue`, `setImmediate`; Expo Push API 5 dtk; status terkirim/gagal/tidak_dikirim; DeviceNotRegistered → token nonaktif. *Rujukan:* SDD §6.10. *Tiket:* BE-29 · BE · Rab 11
+- [ ] **M17-05** `TEST` **`api/push.test.js`** — Expo di-mock: terkirim, DeviceNotRegistered, offline → tidak_dikirim; in-app tetap ada. *Rujukan:* PRD M17. *Tiket:* BE-29 · BE · Rab 11
+- [ ] **M17-06** `MOB` **`expo-notifications`** — Izin dengan teks UI-SPEC, `getExpoPushTokenAsync` → N4 setelah login, N5 saat keluar, ketuk → buka `link`. *Rujukan:* UI-SPEC M (izin push). *Tiket:* MB-30 · FS · Sel 10
+
 ## S01 — Hambatan dari warga + konfirmasi (Should)
 
 Problem: P5
 
 - [ ] **S01-01** `API` **O2 untuk warga → menunggu_konfirmasi, O3 konfirmasi** — 2 ya → aktif, 2 tidak → dicabut; pembuat → SELF_VERIFICATION; dobel → ALREADY_EXISTS. *Rujukan:* API O2–O3. *Tiket:* DA-09 · DA · Sel 10
-- [ ] **S01-02** `MOB` **Konfirmasi di M-S02 & M-S13** — "Masih ada?" → "Ya, masih" / "Sudah tidak ada"; "+ Usulkan hambatan". *Rujukan:* UI-SPEC S13, M. *Tiket:* MB-17 · DA · Jum 13
+- [ ] **S01-02** `MOB` **Konfirmasi di M-S02 & M-S13** — "Masih ada?" → "Ya, masih" / "Sudah tidak ada"; "+ Usulkan hambatan". *Rujukan:* UI-SPEC S13, M. *Tiket:* MB-17 · DA · Kam 12
 
 ## S02 — Perbandingan moda ke lokasi aksi (Should)
 
 Problem: P5
 
-- [ ] **S02-01** `API` **P2 `GET /routes/compare`** — Tiga profil paralel berbagi cache; biaya kendaraan null [PERLU DATA]. *Rujukan:* API P2. *Tiket:* BE-24 · BE · Should
-- [ ] **S02-02** `MOB` **Tabel bandingkan moda di tab Rute** — Belum terjadwal (TICKETS §0) — kerjakan hanya bila ada sisa waktu. *Rujukan:* UI-SPEC S11. *Tiket:* belum terjadwal
+- [ ] **S02-01** `API` **P2 `GET /routes/compare`** — Tiga profil paralel berbagi cache; biaya kendaraan null [PERLU DATA]. *Rujukan:* API P2. *Tiket:* BE-24 · BE · Jum 13
+- [ ] **S02-02** `MOB` **Tabel bandingkan moda di tab Rute** — Tiga baris jalan kaki/sepeda/motor-mobil dari P2, biaya kendaraan "—" sampai rumus ada [PERLU DATA], kalimat asumsi. *Rujukan:* UI-SPEC S11. *Tiket:* MB-27 · PM · Sab 14
 
 ## S03 — Deteksi duplikat (Should)
 
 Problem: P1
 
-- [ ] **S03-01** `API` **R10 + `duplicate_candidates` di R2** — Kategori sama, ≤ 100 m, ≤ 7 hari, bukan ditolak. *Rujukan:* API R10. *Tiket:* BE-23 · BE · Should
-- [ ] **S03-02** `WEB` **Daftar duplikat di modal moderasi** — Belum terjadwal — "Kemungkinan duplikat (n)" + "Tandai duplikat dari #…". *Rujukan:* UI-SPEC S06. *Tiket:* belum terjadwal
+- [ ] **S03-01** `API` **R10 + `duplicate_candidates` di R2** — Kategori sama, ≤ 100 m, ≤ 7 hari, bukan ditolak. *Rujukan:* API R10. *Tiket:* BE-23 · BE · Sel 10
+- [ ] **S03-02** `WEB` **Daftar duplikat di moderasi web & mobile** — "Kemungkinan duplikat (n)" + "#39 · 42 m" + "Tandai duplikat dari #…" (R7 dengan `duplicate_of`) di S06 web & M-S06. *Rujukan:* UI-SPEC S06. *Tiket:* FS-35 · FS · Jum 13
 
 ## S04 — Cek kesesuaian foto (Should)
 
 Problem: anti-palsu
 
-- [ ] **S04-01** `AI` **`photo_check` di job triase** — Hanya bila `PHOTO_CHECK_ENABLED`; teks pemberitahuan di form. *Rujukan:* AI-PROMPTS §6.2. *Tiket:* BE-25 · BE · Should
+- [ ] **S04-01** `AI` **`photo_check` di job triase** — Hanya bila `PHOTO_CHECK_ENABLED`; teks pemberitahuan di form. *Rujukan:* AI-PROMPTS §6.2. *Tiket:* BE-25 · DA · Sel 10
 
 ## S05 — Samarkan wajah/plat manual (Should)
 
 Problem: privasi
 
-- [ ] **S05-01** `MOB` **Kotak blur di PhotoPicker** — Belum terjadwal; `is_blurred=true` bila dipakai. *Rujukan:* UI-SPEC S03-B. *Tiket:* belum terjadwal
+- [ ] **S05-01** `MOB` **Kotak blur di PhotoPicker** — "Samarkan wajah/plat" → tarik kotak → "Terapkan"; hanya versi terblur yang diunggah, `is_blurred=true`; kotak bisa digeser keyboard. *Rujukan:* UI-SPEC S03-B, PRD S05. *Tiket:* MB-26 · PM · Sel 10
 
 ## S06 — Notifikasi in-app (Should, dijadwalkan)
 
@@ -372,7 +411,7 @@ Problem: —
 - [ ] **X-11** `UX` **Review teks mobile vs UI-SPEC** — Semua string mobile cocok dengan UI-SPEC & `shared/labels.ts`. *Rujukan:* UI-SPEC. *Tiket:* PM-08 · PM · Sel 10
 - [ ] **X-12** `UX` **`prefers-reduced-motion` / pengurangan gerak** — Matikan denyut marker & animasi masuk. *Rujukan:* SDD §8.6. *Tiket:* FS-06 · FS · Sen 9
 - [ ] **X-13** `UX` **Format angka & tanggal Indonesia** — "7 Nov 2026, 09.12", "1,8 km", "± 7 menit", koma desimal — util di `shared/`. *Rujukan:* UI-SPEC §0. *Tiket:* FS-02 · FS · Sab 7
-- [ ] **X-14** `DATA` **Eval AI 40 kasus** — `npm run eval:ai` live & fallback; hasil apa adanya di README. *Rujukan:* AI-PROMPTS §9. *Tiket:* DA-14 · DA · Kam 12
+- [ ] **X-14** `DATA` **Eval AI 40 kasus** — `npm run eval:ai` live & fallback; hasil apa adanya di README. *Rujukan:* AI-PROMPTS §9. *Tiket:* DA-14 · DA · Jum 13
 - [ ] **X-15** `OPS` **README root** — Jalan lokal web/backend/mobile, asal kode, hasil eval, status iOS. *Rujukan:* SDD §11. *Tiket:* PM-12 · PM · Kam 12
 - [ ] **X-16** `UX` **Slide presentasi** — Masalah dari data validasi, etika, roadmap. *Rujukan:* DEMO-SCRIPT §1. *Tiket:* PM-06 · PM · Sen 9
 - [ ] **X-17** `TEST` **Gladi demo 1 online** — DEMO-SCRIPT dengan 3 HP + laptop, catat waktu & bug. *Rujukan:* DEMO-SCRIPT. *Tiket:* PM-11 · PM · Kam 12

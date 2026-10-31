@@ -1,6 +1,6 @@
 # PRD SUSI Connect — Product Requirements Document
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 3.3 · **Hackathon:** LOGICODIX 2026, cabang **Mobile App Development**, Subtema 5 Civic Tech & Community Service
+**Tanggal:** 22 Oktober 2026 · **Versi:** 4.1 · **Hackathon:** LOGICODIX 2026, cabang **Mobile App Development**, Subtema 5 Civic Tech & Community Service
 **Sumber kebenaran fitur.** Teknis: [SDD.md](SDD.md) · Kontrak API: [API.md](API.md) · Layar: [UI-SPEC.md](UI-SPEC.md) · AI: [AI-PROMPTS.md](AI-PROMPTS.md) · Tiket: [TICKETS.md](TICKETS.md) · Demo: [DEMO-SCRIPT.md](DEMO-SCRIPT.md)
 
 Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta eksternal yang harus dicek · **[PERLU DATA]** angka belum ada · **[ASUMSI]** keputusan kecil penulis yang bisa diubah tim.
@@ -17,6 +17,8 @@ Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta ekst
 | 3.1 | 22 Okt 2026 | Keputusan 25: sistem desain (DESIGN.md) — monokrom, tema ikut sistem, shadcn gelap otomatis, mobile sama dengan web. Tambah 4 jam kerja (FS-34, MB-25). |
 | 3.2 | 22 Okt 2026 | Keputusan 26 (hasil audit smartroute-app): basis kode & desain mobile dari app SmartRoute; tema otomatis hanya web. Beban 279/280 j. |
 | 3.3 | 22 Okt 2026 | Risiko R16 & pertanyaan terbuka diselaraskan dengan audit (stack mobile sudah terbukti; tersisa PMTiles & iOS). |
+| 4.0 | 22 Okt 2026 | **Perluasan MVP** (keputusan 27–31): M15 rekomendasi moda untuk umum (mesin rute SmartRoute), M16 panel admin mobile, M17 notifikasi push; Should S02–S05 dijadwalkan; kapasitas 12 jam/hari. Non-tujuan, §9.5, matriks §11, risiko R18–R21, Q&A, roadmap, pertanyaan terbuka diperbarui. |
+| 4.1 | 22 Okt 2026 | Keputusan 32: asisten OpenRouter SmartRoute tidak dipakai, layarnya memakai Gemini SUSI (pertanyaan terbuka ditutup). |
 
 ---
 
@@ -49,6 +51,12 @@ Penanda: **[HIPOTESIS]** belum divalidasi · **[PERLU DIVERIFIKASI]** fakta ekst
 | 24 | Jaringan demo | HP asli → backend laptop lewat **domain Cloudflare (Cloudflare Tunnel)**; cadangan otomatis ke **IP laptop lewat hotspot** bila internet mati |
 | 25 | Desain | DESIGN.md: monokrom (warna hanya untuk makna), tema **gelap/terang mengikuti sistem** (gelap = persis smartroute-dashboard), shadcn ikut lewat `class="dark"` otomatis, mobile **sama persis** dengan web |
 | 26 | Basis mobile | `mobile/` dibuat dari app SmartRoute (`smartroute/` di repo smartroute-app) lewat git subtree lalu dipangkas; mobile ikut **desain app SmartRoute** (terang, biru); izin panitia mencakup seluruh repo smartroute-app (AUDIT-SMARTROUTE-APP.md) |
+| 27 | Rekomendasi moda untuk umum | **Masuk MVP (Must M15)** dengan memakai ulang mesin rute SmartRoute: `backend-skeleton` + OpenTripPlanner 2 (GTFS TransJakarta, KRL, MRT, LRT + tarif) sebagai layanan `mobility/`, diakses lewat proxy backend SUSI; layar cari rute, perbandingan (terbaik/termurah/tercepat/ternyaman), detail, dan navigasi app SmartRoute dipertahankan |
+| 28 | Panel admin di aplikasi mobile | **Masuk MVP (Must M16)**, cakupan sama dengan web S17 |
+| 29 | Should yang belum terjadwal | **Dijadwalkan**: S02 (UI bandingkan moda ke lokasi aksi), S03 (UI duplikat), S04 (cek foto), S05 (samarkan foto) |
+| 30 | Notifikasi push | **Masuk MVP (Must M17)**: Expo Push Service (FCM/APNs) + cadangan notifikasi in-app saat offline |
+| 31 | Kapasitas | **12 jam/hari** (Sabtu 7 & 14: 5 jam) → 82 jam/orang, 328 jam tim; beban 319 jam (TICKETS §0) |
+| 32 | Asisten AI SmartRoute | **OpenRouter tidak dipakai**; layar asisten app SmartRoute dialihkan ke Gemini SUSI (chat-lapor M03 & chatbot M12); endpoint `/assistant/ask` layanan `mobility/` tidak diteruskan proxy |
 | 19 | Frontend | Pakai smartroute-dashboard apa adanya secara tampilan & layout (tema gelap, font mono, peta layar penuh + panel mengambang, layout dashboard KPI); halaman lama diadaptasi, bukan dibuang |
 
 ## 2. Ringkasan produk
@@ -98,7 +106,7 @@ Tidak ada klaim "belum ada produk serupa"; celahnya adalah jembatan *laporan →
 | G7 | Dashboard menghitung metrik dari DB | P4 | Angka berubah setelah verifikasi |
 | G8 | Demo lulus tanpa internet | — | Gladi Wi-Fi mati |
 
-**Non-tujuan (MVP):** rekomendasi moda untuk umum; angkutan umum real-time/tarif resmi; integrasi API instansi; panel admin di aplikasi mobile; notifikasi push (Expo Push butuh internet); rilis ke Play Store/App Store; donasi/pembayaran/gamifikasi; moderasi otomatis penuh; navigasi belokan-demi-belokan; pendaftaran mandiri relawan ke komunitas (anggota ditambahkan koordinator/admin); notifikasi push/WA/email.
+**Non-tujuan (MVP):** posisi kendaraan/angkutan umum **real-time** (rekomendasi moda memakai jadwal GTFS & tarif yang sudah ada di SmartRoute, bukan data langsung); integrasi API instansi; rilis ke Play Store/App Store; donasi/pembayaran/gamifikasi; moderasi otomatis penuh; pendaftaran mandiri relawan ke komunitas (anggota ditambahkan koordinator/admin); notifikasi WA/email.
 
 ## 6. Persona & peran
 
@@ -271,6 +279,9 @@ Kamus kata lengkap: AI-PROMPTS.md §7.1.
 | M12 | Chatbot FAQ | Must | P1 | BE, PM (FAQ), DA (widget) |
 | M13 | Transparansi AI (label, alasan, log, Tentang AI) | Must | etika | BE, FS, PM, DA (log API) |
 | M14 | Mode demo: seed sintetis + fallback AI/rute/peta offline | Must | demo | DA (seed), FS, BE |
+| M15 | Rekomendasi moda untuk umum (mesin rute SmartRoute: TransJakarta, KRL, MRT, LRT, jalan kaki) | Must | P5 (warga & relawan menjangkau lokasi) | BE (proxy), FS, DA |
+| M16 | Panel admin di aplikasi mobile | Must | admin | PM, DA |
+| M17 | Notifikasi push (Expo Push) + cadangan in-app | Must | P1 | BE, FS |
 | S01 | Hambatan dari warga + konfirmasi | Should | P5 | BE, FS |
 | S02 | Perbandingan moda ke lokasi aksi | Should | P5 | BE, FS |
 | S03 | Deteksi duplikat | Should | P1 | BE, FS |
@@ -280,7 +291,7 @@ Kamus kata lengkap: AI-PROMPTS.md §7.1.
 | C01 | Ekspor draf instansi ke PDF | Could | P2 | — |
 | C02 | Tautan bagikan laporan ke WhatsApp | Could | P1 | — |
 | C03 | Antarmuka bahasa Inggris | Could | aksesibilitas | — |
-| W01–W04 | Moda umum, transportasi real-time, integrasi instansi, native/donasi/gamifikasi | Won't (roadmap) | — | — |
+| W02–W04 | Angkutan umum real-time, integrasi API instansi, donasi/gamifikasi | Won't (roadmap) | — | — |
 
 ### 9.2 Acceptance criteria Must (Given / When / Then)
 
@@ -463,7 +474,38 @@ Kode galat merujuk API.md §1. "Mode cadangan" = `AI_MODE=fallback` dan/atau `RO
 | 4 | Offline | DevTools Network | Tidak ada request ke `unpkg.com`, `cartocdn.com`, `openfreemap.org`, Google Fonts |
 | 5 | Basemap PMTiles gagal dimuat | Buka peta | Rencana B: latar polos + garis kecamatan; titik/rute tetap tampil |
 
-### 9.3 Acceptance criteria Should
+**M15 — Rekomendasi moda untuk umum**
+
+| # | Given | When | Then |
+| --- | --- | --- | --- |
+| 1 | Mesin rute SmartRoute (OTP2 + `backend-skeleton`) jalan di laptop | Warga mencari rute dari titik di Tebet ke Bundaran HI | ≥ 1 opsi berisi ruas TransJakarta/KRL/MRT/LRT/jalan kaki, durasi, perkiraan tarif, dan label Terbaik/Termurah/Tercepat/Ternyaman |
+| 2 | Hasil rute tampil | Buka detail | Langkah per ruas + garis di peta; tarif & waktu berlabel "perkiraan" dengan sumber jadwal/tarif |
+| 3 | Internet mati, laptop & HP lewat hotspot | Cari rute | Tetap berhasil (OTP2 & GTFS lokal); pencarian lokasi memakai daftar halte (`/mobility/stops/search`), bukan Nominatim |
+| 4 | Layanan mobilitas mati | Cari rute | 503 `MOBILITY_UNAVAILABLE` → "Layanan rute sedang tidak tersedia. Coba lagi sebentar." |
+| 5 | Titik di luar Jabodetabek | Cari rute | 400 dengan pesan dari layanan SmartRoute, tanpa crash |
+| 6 | Relawan di detail aksi | "Rute angkutan umum ke lokasi" | Membuka pencarian rute dengan tujuan = lokasi aksi |
+
+**M16 — Panel admin di aplikasi mobile**
+
+| # | Given | When | Then |
+| --- | --- | --- | --- |
+| 1 | Login admin di HP | Buka tab Pengguna | Daftar pengguna (U1) + tambah/ubah (U2/U3) dengan validasi sama dengan web |
+| 2 | Admin | Buka Log AI | Daftar panggilan AI tanpa PII (U4) |
+| 3 | Admin | Komunitas / Kanal instansi | Tambah/ubah (G1–G6, H1–H3) |
+| 4 | Admin | Laporan ditolak → "Buka ulang" + alasan | Laporan kembali `menunggu` (R9) |
+| 5 | Bukan admin | Akses layar admin | Tidak tampil di navigasi; API 403 `FORBIDDEN_ROLE` |
+
+**M17 — Notifikasi push**
+
+| # | Given | When | Then |
+| --- | --- | --- | --- |
+| 1 | Pengguna login di HP dan mengizinkan notifikasi | Laporannya diverifikasi | Notifikasi sistem "Status laporanmu: Diverifikasi" muncul ≤ 30 dtk; ketuk → detail laporan |
+| 2 | Izin notifikasi ditolak | Ada notifikasi baru | Tetap tampil di lonceng in-app (polling 60 dtk) |
+| 3 | Internet mati | Ada notifikasi baru | `push_status='tidak_dikirim'`; notifikasi in-app tetap ada |
+| 4 | Pengguna keluar | — | Token push dinonaktifkan (N5); tidak menerima push lagi |
+| 5 | Expo membalas DeviceNotRegistered | Kirim push | Token `is_active=false`; tidak dicoba lagi |
+
+### 9.3 Acceptance criteria Should (semuanya kini dijadwalkan)
 
 **S01 — Hambatan dari warga**
 
@@ -523,11 +565,11 @@ Could (C01–C03) hanya dikerjakan bila semua Must lulus kriteria pada Kamis 12 
 
 ### 9.5 Rekomendasi moda untuk umum
 
-Keputusan tim: **roadmap**. Opsi yang ditimbang: (A) MVP penuh — bersaing dengan Google Maps/Waze, data tarif tidak terbuka, subtema kabur; (B) terbatas ke rute aksi = S02; (C) roadmap. Pilihan C + B sebagai Should menjaga fokus pada P1–P5.
+Keputusan awal: roadmap. **Diubah 22 Okt: masuk MVP (M15)** dengan memakai ulang mesin rute SmartRoute (OTP2 + GTFS + tarif) yang sudah jadi, sehingga biayanya integrasi (± 12 jam), bukan membangun dari nol. Risiko "dua aplikasi dalam satu" (catatan analisis C1) dikelola dengan framing: rute angkutan umum adalah cara warga & relawan **menjangkau lokasi masalah dan aksi** (tombol dari detail aksi, M15-6), bukan produk transportasi terpisah — lihat R19 dan Q&A §19.
 
 ### 9.6 Kapasitas
 
-Total tiket di TICKETS.md dibandingkan dengan kapasitas tim; hasilnya ditulis terbuka di TICKETS.md §0. Tim memutuskan **tidak ada pemangkasan Must**. Konsekuensinya: (1) Should hanya dikerjakan bila Must selesai; (2) jika checkpoint Senin 9 Nov atau Rabu 11 Nov meleset, keputusan yang tersisa adalah menambah jam kerja atau memindahkan tiket antaranggota, bukan memotong Must — risiko ini dicatat di §18 R4.
+Total tiket di TICKETS.md dibandingkan dengan kapasitas tim (12 jam/hari sejak 22 Okt); hasilnya ditulis terbuka di TICKETS.md §0. Tim memutuskan **tidak ada pemangkasan Must**, dan Should S02–S05 ikut dijadwalkan. Konsekuensinya: (1) Should hanya dikerjakan bila Must selesai; (2) jika checkpoint Senin 9 Nov atau Rabu 11 Nov meleset, keputusan yang tersisa adalah menambah jam kerja atau memindahkan tiket antaranggota, bukan memotong Must — risiko ini dicatat di §18 R4.
 
 ## 10. Metrik keberhasilan & dampak
 
@@ -573,6 +615,9 @@ Dihitung oleh `GET /metrics/impact` (SQL di SDD §6.6). Data demo **sintetis**; 
 | P1 | M12 | M-S18 | C4 | `ai_analyses` | `api/faq.test.js`, `unit/faqFallback.test.js` |
 | etika | M13 | S05, S06, S09, S12, S15, S17, S18 | U4, Z1 (+ semua AI) | `ai_analyses` | `api/admin.test.js`, `unit/allowlist.test.js` |
 | demo | M14 | semua (banner) + M-S19 Pengaturan server | Z1, A2, A3 | semua (`is_synthetic`) | `api/seed.test.js`, E2E manual DEMO-SCRIPT.md |
+| P5 | M15 | M-S20, M-S21 (mobile) | V1–V3 (proxy ke layanan SmartRoute) | — (layanan `mobility/` tanpa DB SUSI) | `api/mobility.test.js`, regresi rute MV-03 |
+| admin | M16 | M-S22 (mobile) | U1–U4, G1–G6, H1–H3, R9 | `users`, `communities`, `community_members`, `agencies`, `ai_analyses`, `reports` | `api/admin.test.js`, `api/communities.test.js` |
+| P1 | M17 | izin push di M-S01, lonceng | N4, N5 (+ pengiriman dari `notification.service`) | `push_tokens`, `notifications.push_status` | `api/push.test.js` |
 | P5 | S01 | S13 | O2, O3 | `road_obstacles`, `obstacle_confirmations` | `api/obstacles.test.js` |
 | P5 | S02 | S11 | P2 | `route_cache` | `api/routes.test.js` |
 | P1 | S03 | S06 | R10, R7 | `reports` | `api/duplicates.test.js` |
@@ -605,6 +650,8 @@ Setiap endpoint punya minimal kasus sukses + 401 (bila terlindungi) + 403/404 pe
 | `api/communities.test.js` | G1, G2, G3, G4, G5, G6, H1, H2, H3 |
 | `api/notifications.test.js` | N1, N2, N3 |
 | `api/admin.test.js` | U1, U2, U3, U4 |
+| `api/mobility.test.js` | V1, V2, V3 |
+| `api/push.test.js` | N4, N5 |
 | `api/files.test.js` | Z2 |
 | `api/meta.test.js` | Z1, Z3, Z4 |
 | `api/rbac.test.js` | tabel 401/403 otomatis untuk semua route terlindungi |
@@ -760,7 +807,10 @@ Tiket ≤ 4 jam per hari, pemilik, dependensi, DoD, dan perbandingan dengan kapa
 | R15 | Teknis | iOS tidak bisa dipasang (tidak ada Mac/akun Apple) | Android jadi platform demo utama; iOS ditunjukkan bila PRE-15 berhasil, dinyatakan jujur ke juri |
 | R16 | Teknis | Basemap offline (PMTiles) tidak didukung MapLibre RN 11.3.8 | Kombinasi Expo 57 + MapLibre RN 11 sudah terbukti di app SmartRoute (AUDIT §3.1); PMTiles dicek di PRE-15; rencana B: latar polos + batas kecamatan, titik/rute tetap tampil |
 | R17 | Teknis | Internet venue putus → domain Cloudflare mati | Fallback otomatis ke IP hotspot laptop (SDD §8A.6); uji di PM-13 |
-| R18 | Teknis | Dua klien (web + mobile) melebihi kapasitas (282/280 j) | Web dirampingkan; PM & DA mengerjakan layar mobile; Should UI mobile (S02, S05) tidak dijadwalkan |
+| R18 | Teknis | Beban 319 j dari 328 j pada 12 jam/hari | Web dirampingkan; PM & DA mengerjakan layar mobile; tidak ada cadangan selain bug buffer — kelelahan dipantau di standup |
+| R19 | Produk | Juri menilai "dua aplikasi dalam satu" (civic + perencana perjalanan) | Rute umum ditampilkan sebagai cara menjangkau lokasi masalah/aksi (tombol dari detail aksi); di presentasi, porsi demo moda ≤ 30 dtk |
+| R20 | Teknis | OTP2 (Docker, graph ± 205 MB, butuh RAM besar) berat di laptop demo | PRE-18 mengukur RAM; laptop cadangan juga punya graph; bila OTP mati, M15-4 memberi pesan jelas dan demo lanjut |
+| R21 | Teknis | Push butuh Firebase/FCM (Android) & akun Apple (iOS) serta internet | PRE-19; cadangan in-app selalu ada (M17-2/3) |
 | R14 | Etika | Data sintetis dikira nyata | `is_synthetic`, banner, nama "(sintetis)", kalimat eksplisit saat presentasi |
 
 ## 19. Persiapan Q&A juri
@@ -780,6 +830,7 @@ Tiket ≤ 4 jam per hari, pemilik, dependensi, DoD, dan perbandingan dengan kapa
 | Apa yang AI, apa yang aturan? | LLM: memahami teks & menyusun draf. Aturan: bahaya. Algoritma: matching. Manusia: semua keputusan status. |
 | Green IT? | LLM per event, Flash, hasil disimpan, foto dikompres, cache rute, polling 60 dtk, metrik token per laporan. |
 | Beda dengan proyek tim sebelumnya? | Belum pernah dilombakan; panitia mengizinkan kode dasar; alur laporan → aksi → bukti baru. |
+| Kenapa ada perencana rute angkutan umum di aplikasi civic? | Warga & relawan perlu menjangkau lokasi masalah dan aksi dengan murah; kami memakai ulang mesin rute tim (GTFS TransJakarta/KRL/MRT/LRT) — rute bisa dibuka langsung dari detail aksi. |
 | Kenapa Expo/React Native, bukan Flutter/native? | Satu bahasa (TypeScript) dengan web & tipe data yang sama (`shared/`), tim sudah menguasai React; Android & iOS dari satu kode. |
 | Kenapa masih ada web? | Moderator, admin, dan dashboard dampak lebih efisien di layar besar; warga, relawan, dan koordinator memakai aplikasi. |
 | Kenapa laporan campuran dua jalur? | Warga tidak perlu menunggu instansi untuk bagian yang bisa dikerjakan sendiri, dan instansi tetap mendapat permintaan untuk bagian kewenangannya. |
@@ -791,7 +842,7 @@ Tiket ≤ 4 jam per hari, pemilik, dependensi, DoD, dan perbandingan dengan kapa
 | 1 — Uji coba (Des 2026 – Feb 2027) | Validasi nyata | Percontohan 1 kelurahan di DKI dengan 2–3 komunitas; metrik §10 dengan data nyata |
 | 2 — Penguatan | Kepercayaan & keselamatan | Pendaftaran mandiri relawan + verifikasi, reputasi, blur otomatis di perangkat, antrean laporan offline di aplikasi, notifikasi push, cookie HttpOnly di web |
 | 2b — Distribusi | Toko aplikasi | Rilis Play Store & App Store (TestFlight) setelah uji coba |
-| 3 — Mobilitas | Moda | Rekomendasi moda untuk umum dengan data terbuka; angkutan real-time bila ada sumber resmi |
+| 3 — Mobilitas | Moda | Posisi angkutan umum real-time bila ada sumber resmi; kepadatan halte dari laporan warga (fitur SmartRoute) |
 | 4 — Kelembagaan | Instansi | Dasbor kelurahan; penjajakan integrasi resmi bila ada API & izin |
 
 ## 21. Pertanyaan terbuka & asumsi
@@ -809,6 +860,8 @@ Tiket ≤ 4 jam per hari, pemilik, dependensi, DoD, dan perbandingan dengan kapa
 - [ ] Email kontak tim untuk halaman Tentang AI.
 - [ ] **Ketentuan cabang Mobile App Development** di guidebook: wajib APK? boleh backend lewat Cloudflare Tunnel padahal aturan "berjalan di localhost"? (PM → panitia) [PERLU DIVERIFIKASI]
 - [ ] **iOS:** ada Mac atau akun Apple Developer untuk development build iOS? Tanpa itu iOS tidak bisa dipasang di iPhone (MapLibre RN tidak jalan di Expo Go) [PERLU DIVERIFIKASI di PRE-15].
+- [ ] Laptop demo cukup RAM untuk OTP2 + PostgreSQL + backend + Expo sekaligus? (PRE-18)
+- [ ] Akun Firebase tim untuk FCM (PRE-19).
 - [ ] Domain Cloudflare milik tim (nama domain) untuk tunnel.
 - [ ] Dukungan PMTiles di MapLibre RN 11.3.8 dan build iOS (PRE-15). Versi Expo/MapLibre sudah pasti dari app SmartRoute.
 

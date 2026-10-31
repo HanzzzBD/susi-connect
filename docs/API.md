@@ -1,6 +1,6 @@
 # API SUSI Connect — Kontrak Endpoint
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 1.2 · **Status:** siap dipakai untuk tiket BE/FS
+**Tanggal:** 22 Oktober 2026 · **Versi:** 1.3 · **Status:** siap dipakai untuk tiket BE/FS
 **Dirujuk dari:** [SDD.md](SDD.md) §5 · **Skema DB:** [`db/migrations/`](../db/migrations)
 
 ## Log Perubahan
@@ -10,6 +10,7 @@
 | 1.0 | 22 Okt 2026 | Dokumen baru. Menggantikan tabel endpoint PRD v1 §14 dan aturan SDD v1 §5. Perbaikan inkonsistensi: (1) `POST /routes` (PRD) → `GET /routes` (SDD), dipilih **GET** karena idempoten dan bisa di-cache; (2) nilai `source` rute `live` (PRD) → `ors` (SDD), dipilih **`ors`**; (3) `PATCH /actions/:id/status` dan `DELETE /obstacles/:id` diganti endpoint aksi bernama (`/start`, `/submit`, `/cancel`, `/revoke`) sesuai aturan SDD; (4) `POST /auth/demo-login {role}` → `{email}` karena peran kini dua tingkat; (5) chatbot FAQ menjadi `POST /chat/faq` stateless, sesi chat hanya untuk mode lapor; (6) seluruh JSON memakai **snake_case** seperti baris PostgreSQL di repo lama (SDD v1 memakai camelCase di respons rute); (7) envelope galat memakai `error.code` (repo lama memakai `message` di tingkat atas). |
 | 1.1 | 22 Okt 2026 | Hasil audit: R3 `status` menerima beberapa nilai (filter "Dalam penanganan" di S02 butuh 3 status); K1 menambah `breakdown` (hitungan laporan & aksi per status, tugas terbuka) untuk kartu dashboard; `?token=` dibatasi ke `/files/*`. |
 | 1.2 | 22 Okt 2026 | Klien kedua (aplikasi mobile Expo) memakai kontrak yang sama lewat Cloudflare Tunnel/hotspot; mobile mengirim token lewat header juga untuk foto, sehingga `?token=` hanya dipakai web. |
+| 1.3 | 22 Okt 2026 | Endpoint baru: N4–N5 token push, V1–V3 proxy mobilitas (rekomendasi moda untuk umum dari layanan SmartRoute); kode galat `MOBILITY_UNAVAILABLE`. 78 endpoint. |
 
 ---
 
@@ -57,6 +58,7 @@
 | 415 | `UNSUPPORTED_MEDIA` | Bukan JPEG/PNG/WebP (dicek MIME + magic bytes) |
 | 422 | `OUT_OF_PILOT_AREA` | Koordinat di luar `PILOT_BOUNDS` (DKI Jakarta) |
 | 429 | `RATE_LIMITED` | Lebih dari batas `rateLimit.js` |
+| 503 | `MOBILITY_UNAVAILABLE` | Layanan rute angkutan umum (SmartRoute/OTP2) tidak menjawab |
 | 502 | `UPSTREAM_FAILED` | Hanya bila fallback juga gagal |
 | 500 | `INTERNAL` | Galat tak terduga; detail hanya di log |
 
@@ -225,6 +227,11 @@ Semua respons memakai bentuk berikut; field yang tidak boleh dilihat peran terte
 | N1 | GET | `/notifications` | login | — | — |
 | N2 | POST | `/notifications/:id/read` | pemilik | — | — |
 | N3 | POST | `/notifications/read-all` | login | — | — |
+| N4 | POST | `/notifications/push-tokens` | login | — | — |
+| N5 | DELETE | `/notifications/push-tokens/:token` | pemilik token | — | — |
+| V1 | POST | `/mobility/routes` | login | — | — (OTP2 via layanan SmartRoute) |
+| V2 | GET | `/mobility/stops/search` | login | — | — |
+| V3 | GET | `/mobility/nearby-stops` | login | — | — |
 | U1 | GET | `/admin/users` | admin | — | — |
 | U2 | POST | `/admin/users` | admin | — | — |
 | U3 | PATCH | `/admin/users/:id` | admin | — | — |
@@ -234,7 +241,7 @@ Semua respons memakai bentuk berikut; field yang tidak boleh dilihat peran terte
 | Z3 | GET | `/areas` | publik | — | — |
 | Z4 | GET | `/categories` | publik | — | — |
 
-Total: 72 baris, 73 endpoint (Z2 berisi dua path). Setiap endpoint punya minimal satu uji API di `backend/tests/api/` (lihat matriks keterlacakan PRD §11).
+Total: 77 baris, 78 endpoint (Z2 berisi dua path). Setiap endpoint punya minimal satu uji API di `backend/tests/api/` (lihat matriks keterlacakan PRD §11).
 
 ---
 
@@ -1215,6 +1222,35 @@ PATCH: semua field opsional. **Galat:** 400; 403; 404.
 `link` dihitung server dari `entity` (`report` → `/laporan/:id`, `action` → `/aksi/:id`, `referral` → `/rujukan/:id`, `match` → `/komunitas/:cid/rekomendasi`, `evidence` → halaman induk). Frontend polling N1 `?unread=true&limit=1` tiap 60 dtk (Green IT).
 
 ---
+
+### N4 `POST /notifications/push-tokens` · N5 `DELETE /notifications/push-tokens/:token`
+
+```js
+const body = z.object({
+  token: z.string().regex(/^Expo(nent)?PushToken\[.+\]$/, 'Token push tidak valid'),
+  platform: z.enum(['android', 'ios']),
+});
+const params = z.object({ token: z.string().min(10).max(255) });
+```
+
+N4: upsert token milik pengguna (`push_tokens`), respons `{ registered: true }`. N5: `is_active=false`, respons `{ revoked: true }`; token milik orang lain → 404. Efek samping pengiriman: SDD §6.10.
+
+## 13A. Mobilitas — rekomendasi moda untuk umum (V1–V3)
+
+Proxy ke layanan SmartRoute (`MOBILITY_URL`, SDD §4.2). Body/query diteruskan apa adanya; respons layanan dibungkus envelope SUSI. Rate limit 30/menit/pengguna. Galat layanan diteruskan dengan kode HTTP-nya; layanan mati/timeout 15 dtk → 503 `MOBILITY_UNAVAILABLE`.
+
+| ID | Request (diteruskan) | Respons `data` |
+| --- | --- | --- |
+| V1 `POST /mobility/routes` | `{ origin:{lat,lng}, destination:{lat,lng}, departure_time?: ISO 8601 dengan offset, modes?: [...] }` (skema `RoutesRequestSchema` SmartRoute) | `RouteRecommendation` SmartRoute: opsi rute + ruas + durasi + tarif + skor rekomendasi (skema `RouteRecommendationSchema`) |
+| V2 `GET /mobility/stops/search?q=` | `q` 2–80 karakter | daftar halte/stasiun cocok (dipakai juga sebagai cadangan pencarian lokasi saat offline) |
+| V3 `GET /mobility/nearby-stops?lat=&lng=` | koordinat | halte/stasiun terdekat |
+
+```js
+const v1Body = z.object({ origin: z.object({ lat, lng }), destination: z.object({ lat, lng }),
+  departure_time: z.string().datetime({ offset: true }).optional(), modes: z.array(z.string()).max(10).optional() }).passthrough();
+const v2Query = z.object({ q: text(2, 80, 'Kata kunci') });
+const v3Query = z.object({ lat, lng });
+```
 
 ## 14. Admin (U1–U4)
 

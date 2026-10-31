@@ -1,6 +1,6 @@
 # TICKETS SUSI Connect — Rencana Kerja per Hari
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 2.4 · **Pemilik:** PM
+**Tanggal:** 22 Oktober 2026 · **Versi:** 3.0 · **Pemilik:** PM
 **Dirujuk dari:** PRD §17 · DoD umum: SDD §11 · Strategi git: SDD §12
 
 ## Log Perubahan
@@ -15,26 +15,27 @@
 | 2.2 | 22 Okt 2026 | Audit smartroute-app: mobile dari app SmartRoute (subtree + pangkas). PRE-15 4→1 j, MB-01 1→3, MB-03 3→1, MB-04 4→3, MB-06 4→3, MB-09 4→3, MB-20 3→2, MB-23 2→1, MB-25 dihapus (mobile ikut desain app SmartRoute, satu palet). Beban 279 j vs 280 j. |
 | 2.3 | 22 Okt 2026 | Deskripsi MB-02, 05, 07, 08, 15, 22 menyebut file app SmartRoute yang dipakai ulang (`apiConfig.ts`, `withTimeout.ts`, `CustomTabBar`, `crowd-map.tsx`, `currentLocation.ts`, `NavPanel.tsx`) dan penggantian ngrok; jam tidak berubah. |
 | 2.4 | 22 Okt 2026 | Bagian baru §2 *Urutan pengerjaan per orang*. Perbaikan urutan: tag rilis FS-28 kini paling akhir (setelah FS-29, BE-22, MB-23, MB-24); rekam video PM-14 setelah semua layar demo mobile; gladi 1 PM-11 setelah MB-09/MB-14/MB-16/MB-19. Bagian tiket per hari menjadi §3. |
+| 3.0 | 22 Okt 2026 | Perluasan MVP: kapasitas 12 jam/hari; tiket baru PRE-18, PRE-19, MV-01–MV-04, MB-26–MB-30, BE-29, FS-35; Should BE-23–BE-25 dijadwalkan (BE-25 ke DA); BE-20 ke Senin, BE-26 (CI) ke Sabtu 7, DA-14 ke Jumat, DA-16 & MB-17 ke Kamis, MB-07 ke FS Jumat; MB-01 tidak lagi memangkas layar rute. Beban 319 j dari 328 j. |
 
 ---
 
 ## 0. Kapasitas vs beban (dikatakan terus terang)
 
-**Asumsi kapasitas** [ASUMSI dari jawaban tim "10+ jam, dibantu AI"]: Sabtu 7 Nov 5 jam (terpotong mentoring & TM), Minggu–Jumat 10 jam/hari, Sabtu 14 Nov 5 jam → **70 jam per orang, 280 jam tim**.
+**Kapasitas** (keputusan tim 22 Okt): **12 jam/hari** Minggu–Jumat, Sabtu 7 & 14 Nov 5 jam → **82 jam per orang, 328 jam tim**.
 
-| Pemilik | Beban 7–14 Nov | Kapasitas | Selisih | Puncak per hari | Sebelum 7 Nov | Isi utama |
-| --- | --- | --- | --- | --- | --- | --- |
-| FS — Full stack + DevOps | 69 j | 70 j | −1 j | 11 j (Rab) | 10 j | web inti + kerangka & peta mobile, moderasi/aksi/rute mobile, build APK/iOS |
-| BE — Backend + AI | 70 j | 70 j | 0 j | 11 j (Kam, Jum) | 7 j | API, AI, state machine, rute; jaringan mobile; uji mobile |
-| DA — Data Analyst | 71 j | 70 j | **+1 j** | 12 j (Rab, Jum) | 10 j | seed, matching, metrik, API pendukung; layar mobile chat/rekomendasi/hambatan/peta |
-| PM — Project Manager + UI/UX | 69 j | 70 j | −1 j | 11 j (Rab, Kam, Jum) | 20 j | uji, dokumen, video, **layar mobile sederhana** (login, lapor formulir, laporan saya, bukti, rujukan, notifikasi/chatbot, dampak) |
-| **Tim** | **279 j** | **280 j** | −1 j | | 47 j | |
+| Pemilik | Beban 7–14 Nov | Kapasitas | Selisih | Puncak per hari | Sebelum 7 Nov |
+| --- | --- | --- | --- | --- | --- |
+| FS — Full stack + DevOps | 81 j | 82 j | −1 j | 13 j (Jum), 8 j (Sab 7) | 14 j |
+| BE — Backend + AI | 81 j | 82 j | −1 j | 12 j | 7 j |
+| DA — Data Analyst | 79 j | 82 j | −3 j | 12 j | 10 j |
+| PM — Project Manager + UI/UX | 78 j | 82 j | −4 j | 12 j | 20 j |
+| **Tim** | **319 j** | **328 j** | **−9 j** | | 51 j |
 
-**Kesimpulan:** dengan aplikasi mobile Expo, beban tim **pas di kapasitas** (279/280 j) setelah memakai ulang app SmartRoute (AUDIT-SMARTROUTE-APP.md: −10 j) dan **tidak ada cadangan waktu** selain bug buffer Jumat malam–Sabtu (FS-29, BE-22). Ini hanya mungkin bila: (1) 10 jam/hari benar-benar tersedia; (2) PM benar-benar ikut ngoding layar mobile sederhana (keputusan tim: web dirampingkan + PM ikut ngoding); (3) subtree & pemangkasan app SmartRoute (MB-01) selesai Sabtu 7 Nov — stack mobile sudah terbukti di app SmartRoute, sehingga risiko spike turun.
+**Kesimpulan:** seluruh Must (M01–M17) dan Should (S01–S06) kini terjadwal; tidak ada yang dipangkas. Ruang tersisa hanya 9 jam se-tim selain bug buffer (FS-29, BE-22). Ini mengandalkan 12 jam kerja/hari selama 6 hari berturut-turut — risiko kelelahan dicatat di PRD R18. Bila Checkpoint 1/2 meleset, langkahnya menambah jam atau memindah tiket; keputusan dicatat di `docs/notes/checkpoint-*.md`.
 
-**Tidak terjadwal (Should UI):** perbandingan moda (S02) dan samarkan foto (S05) di mobile, daftar duplikat (S03) di UI. API Should (BE-23–BE-25) tetap ada di backlog. Sesuai keputusan tim, **Must tidak dipangkas**; bila Checkpoint 1/2 meleset, pilihannya menambah jam atau memindah tiket — dicatat di `docs/notes/checkpoint-*.md`.
+**Tambahan 22 Okt (+40 j minggu kerja, +4 j sebelum 7 Nov):** rekomendasi moda untuk umum memakai mesin rute SmartRoute (PRE-18, MV-01–MV-04), panel admin mobile (MB-28, MB-29), notifikasi push (PRE-19, BE-29, MB-30), dan Should yang sebelumnya belum terjadwal (BE-23, BE-24, BE-25, MB-26, MB-27, FS-35).
 
-**Jalur kritis:** BE-02 → BE-03 → BE-07 → BE-08 → BE-10 → BE-11 → DA-07 → BE-15 → BE-16 → BE-17, dan di mobile MB-01 → MB-03 → MB-06 → MB-11/MB-13 → MB-14 → MB-15. Gladi 1 (PM-11, Kamis) membutuhkan MB-14 dan BE-17.
+**Jalur kritis:** BE-02 → BE-03 → BE-07 → BE-08 → BE-10 → BE-11 → DA-07 → BE-15 → BE-16 → BE-17; mobile MB-01 → MB-03 → MB-06 → MB-11/MB-13 → MB-14 → MB-15; mobilitas PRE-18 → MV-01 → MV-04. Gladi 1 (PM-11, Kamis) membutuhkan MB-14 dan BE-17.
 
 ## 1. Aturan tiket
 
@@ -50,21 +51,21 @@ Kerjakan dari kiri ke kanan. Urutan dalam sehari mengikuti dependensi; tiket yan
 
 | Hari | FS | BE | DA | PM |
 | --- | --- | --- | --- | --- |
-| Sebelum 7 Nov | PRE-01 → PRE-02 → PRE-03 → PRE-12 ⏳ → PRE-15 | PRE-04 → PRE-05 → PRE-16 | PRE-07 → PRE-10 → PRE-11 ⏳ | PRE-06 → PRE-08 → PRE-09 → PRE-13 → PRE-14 → PRE-17 |
-| Sabtu 7 Nov | FS-01 → FS-02 → MB-01 | BE-01 → BE-02 | DA-01 | PM-01 → PM-02 |
-| Minggu 8 Nov | FS-03 ⏳ → FS-04 → FS-34 → MB-02 | BE-03 → BE-04 → BE-05 ⏳ | DA-02 → DA-03 | PM-03 → PM-04 → MB-04 |
-| Senin 9 Nov | FS-05 → FS-06 → FS-24 ⏳ → MB-03 | BE-07 ⏳ → BE-08 → BE-09 ⏳ | DA-04 ⏳ → DA-05 → DA-06 | PM-05 ⏳ → PM-06 → MB-05 |
-| Selasa 10 Nov | FS-10 → FS-21 → MB-06 | BE-10 → BE-11 → BE-12 | DA-07 ⏳ → DA-08 → DA-09 | PM-07 ⏳ → PM-08 → MB-08 ⏳ |
-| Rabu 11 Nov | FS-12 ⏳ → FS-11 → MB-11 ⏳ | BE-13 → BE-15 → BE-20 | DA-10 → DA-11 → DA-12 → MB-12 | PM-09 → PM-10 → MB-10 → MB-20 ⏳ |
-| Kamis 12 Nov | MB-13 → MB-14 ⏳ | BE-16 → BE-17 → BE-18 | DA-13 → DA-14 → MB-09 | MB-16 ⏳ → MB-19 → PM-11 ⏳ → PM-12 |
-| Jumat 13 Nov | FS-19 → MB-15 → MB-21 | BE-26 → BE-21 → BE-27 → BE-28 → MB-22 | DA-15 → DA-16 → MB-07 → MB-17 | PM-13 ⏳ → MB-18 → PM-14 ⏳ |
-| Sabtu 14 Nov | FS-29 → MB-23 → FS-28 ⏳ | BE-22 → MB-24 ⏳ | DA-19 → DA-20 | PM-15 → PM-16 ⏳ |
+| Sebelum 7 Nov | PRE-01 → PRE-02 → PRE-03 → PRE-12 ⏳ → PRE-15 → PRE-18 → PRE-19 | PRE-04 → PRE-05 → PRE-16 | PRE-07 → PRE-10 → PRE-11 ⏳ | PRE-06 → PRE-08 → PRE-09 → PRE-13 → PRE-14 → PRE-17 |
+| Sabtu 7 Nov | FS-01 → FS-02 → MB-01 | BE-01 → BE-02 → BE-26 | DA-01 | PM-01 → PM-02 |
+| Minggu 8 Nov | FS-03 ⏳ → FS-04 → FS-34 → MB-02 | BE-03 → BE-04 → BE-05 ⏳ → MV-01 | DA-02 → DA-03 → MV-02 | PM-03 → PM-04 → MB-04 → MB-28 ⏳ |
+| Senin 9 Nov | FS-05 → FS-06 → FS-24 ⏳ → MB-03 | BE-07 ⏳ → BE-08 → BE-09 ⏳ → BE-20 | DA-04 ⏳ → DA-05 → DA-06 → MV-03 | PM-05 ⏳ → PM-06 → MB-05 |
+| Selasa 10 Nov | FS-10 → FS-21 → MB-06 → MB-30 | BE-10 → BE-11 → BE-12 → BE-23 | DA-07 ⏳ → DA-08 → DA-09 → BE-25 | PM-07 ⏳ → PM-08 → MB-08 ⏳ → MB-26 |
+| Rabu 11 Nov | FS-12 ⏳ → FS-11 → MB-11 ⏳ | BE-13 → BE-15 → BE-29 ⏳ | DA-10 → DA-11 → DA-12 → MB-12 | PM-09 → PM-10 → MB-10 → MB-20 ⏳ |
+| Kamis 12 Nov | MB-13 → MB-14 ⏳ → MV-04 | BE-16 → BE-17 → BE-18 | DA-13 → DA-16 → MB-09 → MB-17 | MB-16 ⏳ → MB-19 → PM-11 ⏳ → PM-12 |
+| Jumat 13 Nov | FS-19 → MB-07 → MB-15 → MB-21 → FS-35 | BE-21 → BE-27 → BE-28 → BE-24 → MB-22 | DA-14 → DA-15 → MB-29 | PM-13 ⏳ → MB-18 → PM-14 ⏳ |
+| Sabtu 14 Nov | FS-29 → MB-23 → FS-28 ⏳ | BE-22 → MB-24 ⏳ | DA-19 → DA-20 | PM-15 → PM-16 ⏳ → MB-27 |
 
 **Titik sinkron tim:** Senin 9 Nov 21.00 Checkpoint 1 (lapor → triase → verifikasi → matching jalan) · Rabu 11 Nov 21.00 Checkpoint 2 (aksi → rute → bukti jalan) · Kamis 12 Nov malam gladi 1 · Jumat 13 Nov sore gladi offline, malam rekam video, 21.00 freeze · Sabtu 14 Nov tag `v1.0.0` (terakhir) lalu submission.
 
 ### 3.1 Sebelum 7 Nov (22 Okt – 6 Nov)
 
-Beban: FS 10 j · BE 7 j · PM 20 j · DA 10 j
+Beban: FS 14 j · BE 7 j · PM 20 j · DA 10 j
 
 | ID | Judul | Deskripsi | Pemilik | Dependensi | Estimasi | Definition of Done |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -85,10 +86,12 @@ Beban: FS 10 j · BE 7 j · PM 20 j · DA 10 j
 | PRE-15 | Verifikasi ulang stack mobile SmartRoute | Stack Expo 57 + MapLibre RN 11.3.8 + EAS sudah terbukti di app SmartRoute (AUDIT §3.1); build ulang di akun tim, cek iOS dan dukungan PMTiles. | FS | — | 1 j | APK dev terpasang; status iOS & PMTiles dicatat di `docs/notes/mobile-spike.md`. |
 | PRE-16 | Uji Cloudflare Tunnel | Domain di Cloudflare, `cloudflared` named tunnel ke `localhost:5000`; uji dari HP via data seluler. | BE | — | 2 j | `https://api.<domain>/api/health` 200 dari HP; langkah di `docs/notes/tunnel.md`. |
 | PRE-17 | Wireframe mobile | Turunkan wireframe S02–S18 ke layar HP (tab bawah, bottom sheet). | PM | PRE-09 | 4 j | Wireframe mobile semua layar UI-SPEC bagian M. |
+| PRE-18 | Siapkan mesin rute SmartRoute | `git subtree add --prefix=mobility` dari `backend/` smartroute-app (backend-skeleton + otp2-setup); bangun graph OTP2 (clip-osm, build-graph) dan jalankan `backend-skeleton` di laptop demo & cadangan; catat RAM/disk. | FS | PRE-01 | 3 j | `POST http://localhost:3000/routes` mengembalikan rute TransJakarta/KRL/MRT/LRT dari laptop tanpa internet. |
+| PRE-19 | Kredensial push | Proyek Firebase + kredensial FCM V1 diunggah ke EAS untuk paket SUSI; catat syarat iOS (akun Apple). | FS | PRE-15 | 1 j | `eas credentials` menunjukkan FCM aktif. |
 
 ### 3.2 Sabtu 7 Nov — terpotong mentoring & technical meeting
 
-Beban: FS 8 j · BE 4 j · PM 5 j · DA 4 j
+Beban: FS 8 j · BE 6 j · PM 5 j · DA 4 j
 
 | ID | Judul | Deskripsi | Pemilik | Dependensi | Estimasi | Definition of Done |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -99,11 +102,12 @@ Beban: FS 8 j · BE 4 j · PM 5 j · DA 4 j
 | PM-01 | Catat hasil mentoring & TM | Ringkas masukan mentor/aturan TM; ubah keputusan bila perlu. | PM | — | 2 j | Catatan di `docs/notes/`; perubahan tercatat di Log Perubahan dokumen terkait. |
 | PM-02 | Finalisasi wireframe | Terapkan masukan mentor ke wireframe S01–S06. | PM | PRE-09, PM-01 | 3 j | Wireframe S01–S06 bertanda "final". |
 | DA-01 | Fixtures pengguna, komunitas, wilayah, kanal | `seed/fixtures/{areas,users,communities,members,agencies}.json` dari PRD §12.1–12.4. | DA | PRE-07 | 4 j | JSON valid; anggota tersedia 6/10/3; koordinat PRD §12.3. |
-| MB-01 | Subtree app SmartRoute + pangkas | `git subtree add --prefix=mobile` dari smartroute-app (folder `smartroute/` via `git subtree split`), ganti identitas (`app.json` name/slug/scheme/package/owner/projectId), hapus fitur transit & aset SmartRoute (AUDIT §4). | FS | PRE-15, PRE-01 | 3 j | `npx expo start` jalan; tidak ada layar/servis transit tersisa; `tsc --noEmit` hijau. |
+| BE-26 | CI GitHub Actions | `ci.yml`: lint + test backend (service postgres) + lint + build web. | BE | BE-05 | 2 j | PR menampilkan status CI. |
+| MB-01 | Subtree app SmartRoute + ganti identitas + pangkas | `git subtree add --prefix=mobile` (sudah di PRE-01); ganti identitas (`app.json` name/slug/scheme/package/owner/projectId, ikon, splash); hapus fitur kepadatan, ngrok, `react-native-maps`; **pertahankan** layar rute/navigasi/halte untuk M15 (AUDIT §4 v1.1). | FS | PRE-15, PRE-01 | 3 j | `npx expo start` jalan; tidak ada fitur kepadatan/nama SmartRoute tersisa; layar rute masih jalan; `tsc --noEmit` hijau. |
 
 ### 3.3 Minggu 8 Nov
 
-Beban: FS 11 j · BE 9 j · PM 8 j · DA 8 j
+Beban: FS 11 j · BE 12 j · PM 12 j · DA 11 j
 
 | ID | Judul | Deskripsi | Pemilik | Dependensi | Estimasi | Definition of Done |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -119,10 +123,13 @@ Beban: FS 11 j · BE 9 j · PM 8 j · DA 8 j
 | FS-34 | Token semantik & tema ikut sistem (web) | Ganti blok `@theme` dengan token DESIGN §8.1, skrip `.dark` otomatis di `index.html`, jalankan penggantian kelas DESIGN §2.4 di komponen lama, hapus pemaksaan `theme="dark"` peta. | FS | FS-01 | 2 j | Gelap tampak sama persis dengan repo lama; terang terbaca; shadcn ikut tema; tangkapan layar keduanya. |
 | MB-02 | shared/ + apiClient mobile | Pindah `types.ts`/`labels.ts` ke `shared/` (alias Metro); `src/services/apiClient.ts` di atas `fetchWithTimeout` app SmartRoute; token SecureStore; `apiConfig.ts` diperluas: `EXPO_PUBLIC_API_BASE_URL` + `EXPO_PUBLIC_API_FALLBACK_URL`. | FS | FS-02, MB-01 | 2 j | Web & mobile mengimpor `shared/`; panggilan `/health` dari HP berhasil. |
 | MB-04 | Komponen dasar mobile | Pakai ulang Text, Header, TopNav, InfoCard, pola modal BlurView; tambah Badge status/urgensi, AiBadge/AiReason, Empty/Error/Toast/FallbackBanner (DESIGN §7). | PM | MB-01 | 3 j | Halaman contoh komponen; label aksesibilitas ada. |
+| MV-01 | Proxy mobilitas di backend SUSI | Route `/api/mobility/*` → layanan SmartRoute (`MOBILITY_URL`, default `http://localhost:3000`): `POST /mobility/routes`, `GET /mobility/stops/search`, `GET /mobility/nearby-stops`; timeout 15 dtk; galat `MOBILITY_UNAVAILABLE`. | BE | BE-03, PRE-18 | 3 j | `api/mobility.test.js` (layanan di-mock); 503 jelas bila OTP mati. |
+| MV-02 | Layar perbandingan & detail rute (teks SUSI) | Sesuaikan `ComparisonCard`, `RouteCard`, `RouteDetailCard`, `PreferenceCard` ke label & format SUSI; label "perkiraan" pada biaya/waktu; sumber tarif tertulis. | DA | MB-01 | 3 j | Teks sesuai UI-SPEC M-S21; tidak ada nama "SmartRoute" tersisa. |
+| MB-28 | Admin mobile: pengguna & log AI | Layar admin tab Pengguna (U1–U3) & Log AI (U4), daftar + form sederhana. | PM | MB-04, BE-04 | 4 j | GWT M16-1/2. |
 
 ### 3.4 Senin 9 Nov — Checkpoint 1 pukul 21.00
 
-Beban: FS 8 j · BE 10 j · PM 10 j · DA 10 j
+Beban: FS 8 j · BE 12 j · PM 10 j · DA 12 j
 
 | ID | Judul | Deskripsi | Pemilik | Dependensi | Estimasi | Definition of Done |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -137,12 +144,14 @@ Beban: FS 8 j · BE 10 j · PM 10 j · DA 10 j
 | DA-06 | rankAndStore | Query kandidat + simpan match + uji integrasi dengan seed (SDD §6.4). | DA | DA-03, DA-02 | 3 j | Laporan demo menghasilkan 3 match urut di DB uji. |
 | PM-05 | Uji Checkpoint 1 & teks | Lapor → triase → verifikasi → matching lewat API/web; review `shared/labels.ts`. | PM | BE-09, FS-05 | 3 j | Laporan checkpoint (lulus/gagal per GWT) di `docs/notes/`. |
 | PM-06 | Slide presentasi v1 | Slide masalah (data PRE-11), etika, penutup, roadmap. | PM | PRE-11 | 4 j | Slide v1 dibagikan; angka hanya dari PRE-11. |
+| BE-20 | FAQ C4 | FAQ live + fallback kata kunci. | BE | BE-08, PM-03 | 2 j | `api/faq.test.js`, `unit/faqFallback.test.js`. |
 | MB-03 | Development build Android (EAS) | Profil `development` EAS dengan package SUSI; pasang di 3 HP. | FS | MB-01 | 1 j | APK dev terpasang di 3 HP Android. |
 | MB-05 | Login & navigasi mobile | Layar login + akun demo, AuthContext, `CustomTabBar` app SmartRoute diubah jadi tab per persona, guard. | PM | MB-02, BE-04 | 3 j | Login demo 6 persona; tab sesuai UI-SPEC M0. |
+| MV-03 | Uji regresi rute | Jalankan `scripts/regression-routes.mjs` SmartRoute lewat proxy SUSI untuk 10 pasangan titik DKI; catat hasil apa adanya. | DA | MV-01 | 2 j | Tabel hasil di `docs/notes/mobility-regresi.md`. |
 
 ### 3.5 Selasa 10 Nov
 
-Beban: FS 8 j · BE 10 j · PM 9 j · DA 10 j
+Beban: FS 11 j · BE 12 j · PM 12 j · DA 12 j
 
 | ID | Judul | Deskripsi | Pemilik | Dependensi | Estimasi | Definition of Done |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -156,12 +165,16 @@ Beban: FS 8 j · BE 10 j · PM 9 j · DA 10 j
 | DA-09 | Geo & hambatan O1–O4 | `lib/geo.js` (haversine R = 6371,0088 km, circlePolygon, bboxAround), `obstacle.service`, route O1–O4. | DA | BE-03 | 3 j | `unit/geo.test.js`, `api/obstacles.test.js`. |
 | PM-07 | Audit aksesibilitas web | axe + keyboard S01, S02, S06. | PM | FS-21 | 3 j | Issue a11y per layar. |
 | PM-08 | Review teks mobile | Bandingkan string mobile dengan UI-SPEC. | PM | MB-04 | 2 j | Daftar perbedaan teks di issue. |
+| BE-23 (Should) | S03 duplikat | R10 + badge di R2. | BE | BE-07 | 2 j | `api/duplicates.test.js`. |
+| BE-25 (Should) | S04 cek foto | `photo_check` di job triase bila `PHOTO_CHECK_ENABLED`. | DA | BE-09 | 2 j | `unit/photoCheck.test.js`. |
 | MB-06 | MapView mobile | Turunkan dari CrowdMapView/AllStopsMapView/NavigateMap (MapLibre v11): marker laporan, poligon hambatan (layer fill), garis rute, batas DKI. | FS | MB-03 | 3 j | Marker, poligon, rute tampil dari data seed. |
 | MB-08 | Lapor formulir M-S03B | Kategori, deskripsi, titik di peta + GPS (`utils/currentLocation.ts` app SmartRoute, tanpa Nominatim), foto kamera/galeri (tambah `expo-image-picker`, `expo-image-manipulator`) dikompres 1280 px, kirim multipart. | PM | MB-06, BE-07 | 4 j | Laporan tersimpan dari HP; validasi per field. |
+| MB-26 | Samarkan wajah/plat (S05) | Kotak blur di PhotoPicker mobile sebelum unggah; `is_blurred=true`. | PM | MB-08 | 3 j | GWT S05. |
+| MB-30 | Notifikasi push di aplikasi | `expo-notifications`: minta izin dengan teks UI-SPEC, daftar token ke N4 setelah login, hapus saat keluar, ketuk notifikasi → buka `link`. | FS | MB-05, PRE-19 | 3 j | Notifikasi sampai ke HP saat laporan diverifikasi (GWT M17). |
 
 ### 3.6 Rabu 11 Nov — Checkpoint 2 pukul 21.00
 
-Beban: FS 11 j · BE 10 j · PM 11 j · DA 12 j
+Beban: FS 11 j · BE 12 j · PM 11 j · DA 12 j
 
 | ID | Judul | Deskripsi | Pemilik | Dependensi | Estimasi | Definition of Done |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -174,15 +187,15 @@ Beban: FS 11 j · BE 10 j · PM 11 j · DA 12 j
 | DA-12 (Should) | Notifikasi N1–N3 (S06) | `notification.service` lengkap (ganti stub), route N1–N3, isi tabel SDD §6.8. | DA | BE-10 | 3 j | `api/notifications.test.js`. |
 | PM-09 | Uji GWT M01–M06 + Checkpoint 2 | GWT PRD §9.2 M01–M06 di aplikasi; cek alur aksi → rute → bukti. | PM | PM-05 | 4 j | Tabel lulus/gagal per baris GWT. |
 | PM-10 | Tetapkan titik hambatan demo | Bersama FS: koordinat & radius yang pasti memotong rute (DEMO-SCRIPT T4). | PM | PRE-12, DA-09 | 1 j | Koordinat final di DEMO-SCRIPT §0. |
-| BE-20 | FAQ C4 | FAQ live + fallback kata kunci. | BE | BE-08, PM-03 | 2 j | `api/faq.test.js`, `unit/faqFallback.test.js`. |
 | MB-10 | Laporan saya & detail M-S04/S05 | Daftar, detail, timeline, label AI, polling triase, konfirmasi bukti oleh pelapor. | PM | MB-04, BE-07 | 4 j | Label AI tampil ≤ 15 dtk; konfirmasi bukti jalan. |
 | MB-11 | Moderasi mobile M-S06 | Antrian + detail + TriagePanel + verifikasi/teruskan/tolak. | FS | MB-06, BE-11, BE-13 | 4 j | GWT M05 lulus di HP. |
 | MB-12 | Rekomendasi mobile M-S08 | Daftar match + ScoreBreakdown + terima/tolak. | DA | MB-05, DA-07 | 3 j | Skor contoh 0,963 tampil benar. |
 | MB-20 | Notifikasi, chatbot, Tentang AI | Chatbot = layar asisten dengan endpoint C4; lonceng + daftar notifikasi; Tentang AI. | PM | BE-20, DA-12, MB-04 | 2 j | State UI-SPEC M-S15/S16/S18. |
+| BE-29 | Layanan push | `push.service`: N4/N5 simpan/hapus token (migrasi 006), kirim lewat Expo Push API setelah `notification.enqueue` commit, tandai `push_status`, nonaktifkan token DeviceNotRegistered. | BE | DA-12 | 4 j | `api/push.test.js` (Expo di-mock); offline → `tidak_dikirim`, notifikasi in-app tetap ada. |
 
 ### 3.7 Kamis 12 Nov
 
-Beban: FS 8 j · BE 11 j · PM 11 j · DA 10 j
+Beban: FS 12 j · BE 11 j · PM 11 j · DA 12 j
 
 | ID | Judul | Deskripsi | Pemilik | Dependensi | Estimasi | Definition of Done |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -190,40 +203,43 @@ Beban: FS 8 j · BE 11 j · PM 11 j · DA 10 j
 | BE-17 | Bukti E1–E4 + rujukan F3–F4 | `verifyEvidence` (aksi → laporan selesai), bukti rujukan, complete referral. | BE | BE-16, DA-05, BE-13 | 4 j | `api/evidences.test.js`, `referrals.test.js`: SELF_VERIFICATION, EVIDENCE_REQUIRED. |
 | BE-18 | route.service P1 | ORS + avoid_polygons + cache + garis lurus; ORS di-mock di uji (SDD §6.5). | BE | DA-09, PRE-05 | 3 j | `unit/route.test.js`, `api/routes.test.js`. |
 | DA-13 | Komunitas, kanal, admin API | G1–G6, H1–H3, U1–U4. | DA | BE-03 | 4 j | `api/communities.test.js`, `admin.test.js`. |
-| DA-14 | Eval AI | `tests/ai-eval/cases.json` dari PRE-10 + `npm run eval:ai`. | DA | DA-04, BE-08 | 3 j | Hasil live & fallback tercetak. |
 | PM-11 | Gladi demo 1 (online) | DEMO-SCRIPT langkah 1–9 dengan HP + laptop. | PM | MB-14, MB-09, BE-17, MB-16, MB-19 | 3 j | Catatan waktu per langkah + daftar bug. |
 | PM-12 | README & sinkron dokumen | README root (jalan lokal, asal kode); perbarui dokumen ke implementasi aktual. | PM | BE-26 | 3 j | Clone bersih mengikuti README berhasil (diuji orang lain). |
+| DA-16 | Validasi dashboard | K1 vs SQL manual setelah alur demo. | DA | DA-10 | 2 j | Selisih 0. |
 | MB-09 | Lapor lewat chat M-S03A | Ubah layar asisten SmartRoute (`assistant.tsx`) ke C1–C3: DraftCard, konfirmasi, kotak darurat, pindah ke formulir. | DA | MB-08, BE-12 | 3 j | State UI-SPEC M-S03A. |
 | MB-13 | Buat aksi mobile M-S09 | Form aksi + TaskEditor + catatan keselamatan + titik kumpul/TPS di peta. | FS | MB-12, BE-15 | 4 j | Aksi demo dibuat dari draf AI. |
 | MB-14 | Aksi saya & detail aksi M-S10/S11 | Daftar aksi, tugas (ambil/lepas/tiba/selesai), mulai/batal, ketersediaan. | FS | MB-13, BE-16 | 4 j | Tombol sesuai `can`. |
 | MB-16 | Bukti mobile | Kamera before/after, BeforeAfter, ajukan verifikasi (jam & kg), verifikasi oleh moderator. | PM | MB-14, BE-17 | 3 j | GWT M10 lulus di HP. |
+| MB-17 | Hambatan mobile M-S13 | Panel hambatan + form tandai di peta + cabut + konfirmasi (S01). | DA | MB-06, DA-09 | 3 j | State UI-SPEC M-S13. |
 | MB-19 | Dampak mobile M-S14 | Kartu KPI + ringkasan status dari K1. | PM | DA-10, MB-04 | 2 j | State UI-SPEC M-S14. |
+| MV-04 | Cari rute moda umum M-S20/M-S21 | Pertahankan layar cari rute, hasil (Terbaik/Termurah/Tercepat/Ternyaman), detail & navigasi app SmartRoute; arahkan ke `/api/mobility/*`; masuk tab "Rute". | FS | MV-01, MB-05 | 4 j | GWT M15 lulus di HP, juga dengan internet mati. |
 
 ### 3.8 Jumat 13 Nov — freeze 21.00
 
-Beban: FS 8 j · BE 11 j · PM 11 j · DA 12 j
+Beban: FS 13 j · BE 11 j · PM 11 j · DA 11 j
 
 | ID | Judul | Deskripsi | Pemilik | Dependensi | Estimasi | Definition of Done |
 | --- | --- | --- | --- | --- | --- | --- |
-| BE-26 | CI GitHub Actions | `ci.yml`: lint + test backend (service postgres) + lint + build web. | BE | BE-05 | 2 j | PR menampilkan status CI. |
+| DA-14 | Eval AI | `tests/ai-eval/cases.json` dari PRE-10 + `npm run eval:ai`. | DA | DA-04, BE-08 | 3 j | Hasil live & fallback tercetak. |
 | DA-15 | Dampak S14 | `MetricsGrid`, `MetricCard` (bungkus KpiCard), `SyntheticBanner`, filter peran. | DA | DA-10, FS-04 | 4 j | State UI-SPEC S14; tooltip rumus. |
 | BE-21 | Skrip demo & hardening | `ai:record`, `routes:export/import`, rate limit AI, tabel RBAC lengkap untuk semua route. | BE | BE-18, BE-20 | 3 j | `rbac.test.js` mencakup semua route API.md §2. |
 | BE-27 | Admin S17 (frontend) | Tab pengguna, komunitas, kanal, log AI. | BE | DA-13, FS-04 | 3 j | Semua tab memanggil U/G/H; GWT M13-5. |
 | BE-28 | Tentang AI web S15 | Halaman statis + status Z1. | BE | PM-03 | 1 j | State UI-SPEC S15. |
 | FS-19 | Verifikasi bukti web S07 | Antrian bukti + `BeforeAfter` + sah/tolak. | FS | FS-12, BE-17 | 2 j | GWT M10-4/5 lulus di web. |
-| DA-16 | Validasi dashboard | K1 vs SQL manual setelah alur demo. | DA | DA-10 | 2 j | Selisih 0. |
 | PM-13 | Gladi offline + GWT M07–M14 | DEMO-SCRIPT dengan Wi-Fi mati. | PM | FS-11, BE-21 | 4 j | Lulus/gagal per langkah; bug kritis ditugaskan sebelum 21.00. |
 | PM-14 | Rekam & sunting video | DEMO-SCRIPT §2; rekam setelah semua layar demo selesai; unggah paling lambat 23.00. | PM | PM-13, MB-18, MB-15, MB-07, MB-17 | 4 j | Video 3–5 menit, 5 fitur AI terlihat, tanpa narasi. |
-| MB-07 | Peta & beranda mobile M-S02 | Turunkan `crowd-map.tsx` app SmartRoute: peta laporan publik/sendiri + bottom sheet ringkasan + tombol "+ Lapor". | DA | MB-06, BE-07 | 3 j | State UI-SPEC M-S02. |
+| BE-24 (Should) | S02 bandingkan moda (API) | P2 tiga profil paralel. | BE | BE-18 | 2 j | `api/routes.test.js` compare. |
+| MB-07 | Peta & beranda mobile M-S02 | Turunkan `crowd-map.tsx` app SmartRoute: peta laporan publik/sendiri + bottom sheet ringkasan + tombol "+ Lapor". | FS | MB-06, BE-07 | 3 j | State UI-SPEC M-S02. |
 | MB-15 | Rute & hambatan di aksi | RoutePanel (asal: GPS/titik kumpul; tujuan; moda) dari pola `NavPanel.tsx`, garis rute `GeoJSONSource`, hambatan dihindari. | FS | MB-14, BE-18 | 4 j | Rute berubah setelah hambatan ditambah (GWT M09-2) di HP. |
-| MB-17 | Hambatan mobile M-S13 | Panel hambatan + form tandai di peta + cabut + konfirmasi (S01). | DA | MB-06, DA-09 | 3 j | State UI-SPEC M-S13. |
 | MB-18 | Rujukan mobile M-S12 | Daftar & detail, salin draf (expo-clipboard), tiket, bukti, selesai, kembalikan. | PM | MB-04, BE-17 | 3 j | GWT M07 lulus di HP. |
 | MB-21 | Basemap offline mobile | Style offline (PMTiles atau rencana B: latar polos + batas kecamatan) di MapLibre RN. | FS | MB-06, PRE-03 | 2 j | Mode pesawat + hotspot: peta & titik tampil. |
 | MB-22 | Pengaturan server & fallback jaringan | Ganti ngrok dengan Cloudflare: `apiConfig.ts` cek `/health` domain → IP hotspot; layar Pengaturan (URL backend); backend menerima host tunnel. | BE | MB-02, PRE-16 | 2 j | Internet dimatikan: aplikasi pindah ke hotspot dalam ≤ 10 dtk. |
+| MB-29 | Admin mobile: komunitas, kanal, laporan ditolak | Tab Komunitas (G1–G6), Kanal instansi (H1–H3), Laporan ditolak + Buka ulang (R9). | DA | DA-13, MB-28 | 4 j | GWT M16-3/4. |
+| FS-35 | Daftar duplikat di moderasi (S03) | "Kemungkinan duplikat (n)" + "Tandai duplikat dari #…" di S06 web & M-S06. | FS | FS-12, MB-11, BE-23 | 2 j | GWT S03. |
 
 ### 3.9 Sabtu 14 Nov — submission
 
-Beban: FS 7 j · BE 5 j · PM 4 j · DA 5 j
+Beban: FS 7 j · BE 5 j · PM 6 j · DA 5 j
 
 | ID | Judul | Deskripsi | Pemilik | Dependensi | Estimasi | Definition of Done |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -236,14 +252,5 @@ Beban: FS 7 j · BE 5 j · PM 4 j · DA 5 j
 | PM-16 | Submission | Isi formulir, tautan repo + tag + video; konfirmasi diterima. | PM | FS-28, PM-14 | 2 j | Bukti submission tersimpan. |
 | MB-23 | Build APK rilis & iOS | Profil `preview`/`production` EAS untuk SUSI; iOS bila akun Apple ada. | FS | MB-15 | 1 j | APK rilis terpasang dari file; status iOS di README. |
 | MB-24 | Uji mobile menyeluruh | Jalankan GWT inti di 2 HP Android (dan iPhone bila ada) lewat Cloudflare & hotspot. | BE | MB-23 | 2 j | Tabel lulus/gagal per GWT. |
-
-### 3.10 Should — hanya bila Checkpoint 2 lulus dan ada sisa kapasitas
-
-Beban: FS 0 j · BE 6 j · PM 0 j · DA 0 j
-
-| ID | Judul | Deskripsi | Pemilik | Dependensi | Estimasi | Definition of Done |
-| --- | --- | --- | --- | --- | --- | --- |
-| BE-23 | S03 duplikat | R10 + badge di R2. | BE | BE-07 | 2 j | `api/duplicates.test.js`. |
-| BE-24 | S02 bandingkan moda (API) | P2 tiga profil paralel. | BE | BE-18 | 2 j | `api/routes.test.js` compare. |
-| BE-25 | S04 cek foto | `photo_check` di job triase bila `PHOTO_CHECK_ENABLED`. | BE | BE-09 | 2 j | `unit/photoCheck.test.js`. |
+| MB-27 | Bandingkan moda ke lokasi aksi (S02) | Tabel tiga moda di tab Rute detail aksi dari P2. | PM | MB-15, BE-24 | 2 j | GWT S02. |
 

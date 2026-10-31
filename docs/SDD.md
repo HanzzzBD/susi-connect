@@ -1,6 +1,6 @@
 # SDD SUSI Connect — Software Design Document
 
-**Tanggal:** 22 Oktober 2026 · **Versi:** 3.3 · **Sumber kebenaran teknis** (fitur: [PRD.md](PRD.md))
+**Tanggal:** 22 Oktober 2026 · **Versi:** 4.0 · **Sumber kebenaran teknis** (fitur: [PRD.md](PRD.md))
 **Dokumen terkait:** [API.md](API.md) · [AI-PROMPTS.md](AI-PROMPTS.md) · [UI-SPEC.md](UI-SPEC.md) · [TICKETS.md](TICKETS.md) · [`db/migrations/`](../db/migrations)
 
 ## Log Perubahan
@@ -15,6 +15,7 @@
 | 3.1 | 22 Okt 2026 | Sistem desain dipindah ke DESIGN.md: tema gelap/terang mengikuti sistem, token semantik `surface/ink`, `.dark` otomatis (shadcn ikut), peta tidak lagi dipaksa gelap (§8.6, §8.7). |
 | 3.2 | 22 Okt 2026 | Audit smartroute-app (AUDIT-SMARTROUTE-APP.md): `mobile/` dibuat dari `smartroute/` lewat git subtree lalu dipangkas; versi stack mobile kini pasti (Expo ~57, RN 0.86.3, MapLibre RN 11.3.8, NativeWind 4.2.6 + Tailwind 3.4, expo-dev-client, EAS); struktur `mobile/src/app`; ikon `@expo/vector-icons`; desain mobile ikut app SmartRoute. |
 | 3.3 | 22 Okt 2026 | Penyelarasan dengan audit: struktur `mobile/src` mengikuti app SmartRoute (servis di `src/services`, `apiConfig.ts` diperluas menggantikan `network.ts`), env `EXPO_PUBLIC_API_BASE_URL` (nama dari app SmartRoute), peta memakai API MapLibre RN v11 (`Map`, `Marker`, `GeoJSONSource`) & style OpenFreeMap, build lewat EAS cloud. |
+| 4.0 | 22 Okt 2026 | Perluasan MVP: D21 layanan mobilitas SmartRoute (`mobility/`, proxy `/api/mobility/*`, §4.2), D22 notifikasi push (`push.service` §6.10, migrasi 006), D23 admin mobile; arsitektur & route map diperbarui. |
 
 ---
 
@@ -41,6 +42,9 @@
 | D18 | Web dirampingkan | Web hanya S01, S02, S06, S07, S14, S15, S17. | Kapasitas; peran lapangan pakai HP. |
 | D19 | Peta mobile | `@maplibre/maplibre-react-native` 11.3.8 (API v11) + development build lewat EAS; bukan Expo Go. | Satu teknologi peta dengan web, bisa offline. |
 | D20 | Jaringan | Backend tetap di laptop (`localhost:5000`), diekspos `cloudflared` named tunnel ke `https://api.<domain>`; mobile fallback ke `http://<IP-hotspot>:5000`. | HP butuh alamat yang bisa dijangkau; tetap jalan tanpa internet. |
+| D21 | Layanan mobilitas | `mobility/` = `backend/backend-skeleton` (TypeScript, Express 5, port 3000) + `backend/otp2-setup` (OpenTripPlanner 2 Docker, port 8080) dari smartroute-app via git subtree. Backend SUSI mem-proxy `/api/mobility/*` → `MOBILITY_URL`. Asisten OpenRouter di layanan itu **tidak** dipakai. | M15; memakai ulang mesin rute jadi, bahasa TS dibiarkan karena layanan terpisah. |
+| D22 | Notifikasi push | `expo-notifications` di app; backend kirim ke Expo Push API setelah notifikasi in-app dibuat; tabel `push_tokens` (migrasi 006). | M17; cadangan in-app tetap. |
+| D23 | Admin mobile | Layar admin di app memakai endpoint admin yang sama (U, G, H, R9). | M16. |
 | D15 | Upload | multer memory → `sharp` re-encode WebP 1280 px (EXIF hilang) → disk `UPLOAD_DIR`. | Privasi foto. |
 
 ---
@@ -145,6 +149,11 @@ flowchart LR
     MAPC[map.tsx mapcn<br/>MapMarker, MapRoute, MapGeoJSON, MapClusterLayer]
     BASE[(public/basemap<br/>dki.pmtiles, style, glyph, sprite)]
   end
+  subgraph MOBSVC[mobility/ — layanan SmartRoute]
+    SK[backend-skeleton :3000<br/>routes, stops, nearby]
+    OTP[(OpenTripPlanner 2 :8080<br/>GTFS TJ/KRL/MRT/LRT + OSM)]
+  end
+  EXPO[Expo Push Service]
   subgraph API[backend/ — Express 4, localhost:5000]
     MW[rateLimit → requireAuth → requireRole → validate]
     CTRL[controllers]
@@ -161,6 +170,8 @@ flowchart LR
   SVC --> UP
   SVC --> AI --> GEM
   SVC -->|directions + avoid_polygons| ORS
+  SVC -->|/api/mobility/* proxy| SK --> OTP
+  SVC -.->|push bila online| EXPO
   MAPC -->|VITE_MAP_STYLE=online| CARTO
   MAPC -->|VITE_MAP_STYLE=offline| BASE
   subgraph MOB[mobile/ — Expo React Native, Android + iOS]
@@ -246,6 +257,17 @@ susi-connect/
 ```
 
 `web/` dan `mobile/` mengimpor `shared/` lewat alias `@shared/*` (Vite `resolve.alias`; Metro `watchFolders` + `extraNodeModules` / Babel module-resolver) [PERLU DIVERIFIKASI konfigurasi Metro untuk folder di luar proyek pada versi Expo yang dipakai].
+
+### 4.2 Layanan mobilitas
+
+```text
+susi-connect/
+  mobility/                     # dari smartroute-app/backend (git subtree), tidak diubah kecuali konfigurasi
+    backend-skeleton/           # Express 5 + TS; POST /routes, GET /stops/search, GET /nearby-stops, GET /all-stops
+    otp2-setup/                 # docker-compose OTP2 2.10, skrip clip-osm & build-graph (graph.obj tidak di git)
+```
+
+Backend SUSI: `routes/mobility.routes.js` meneruskan request (setelah `requireAuth` + rate limit 30/menit/pengguna) ke `MOBILITY_URL` dengan timeout 15 dtk; respons diteruskan apa adanya dalam envelope SUSI (`data`). Bila layanan tidak menjawab → 503 `MOBILITY_UNAVAILABLE`. Env baru: `MOBILITY_URL` (default `http://localhost:3000`).
 
 ## 5. Desain backend
 
@@ -876,6 +898,21 @@ async function enqueue(client, n) {}
 | rujukan berubah | pelapor, instansi(W) | `referral_update` | "Rujukan instansi: <status>" |
 | hambatan dikonfirmasi | pembuat | `obstacle_confirm` | "Hambatanmu dikonfirmasi warga lain" |
 
+### 6.10 `push.service.js`
+
+```js
+/** @param {object} user @param {{token:string, platform:'android'|'ios'}} input */
+async function registerToken(user, input) {}   // N4: upsert by token, is_active=true, last_seen_at=now()
+async function revokeToken(user, token) {}     // N5: is_active=false (hanya milik sendiri)
+/** Dipanggil SETELAH commit transaksi yang memanggil notification.enqueue. */
+async function sendForNotifications(notificationIds) {}
+```
+
+1. Ambil notifikasi + token aktif penerimanya; tanpa token → biarkan `push_status='tidak_dikirim'`.
+2. `POST https://exp.host/--/api/v2/push/send` (batas waktu 5 dtk) dengan `{ to, title, body, data: { link } }` [PERLU DIVERIFIKASI format & batas batch Expo Push].
+3. Tiket `ok` → `push_status='terkirim'`, `pushed_at=now()`; `DeviceNotRegistered` → token `is_active=false`; galat jaringan → `gagal` (tidak diulang; in-app tetap ada).
+4. Tidak pernah melempar ke pemanggil; tidak menunda respons API (dijalankan `setImmediate`).
+
 ### 6.9 Seed (`npm run seed`)
 
 1. `withTx`; urutan hapus: data `is_synthetic=true` dari tabel anak ke induk (`notifications`, `audit_logs` milik user sintetis, `evidences`, `task_assignments`, `tasks`, `actions`, `agency_referrals`, `matches`, `ai_analyses`, `report_status_history`, `report_photos`, `reports`, `obstacle_confirmations`, `road_obstacles`, `community_members`, `communities`, `users`), lalu `agencies`, `route_cache`. Tabel `areas` dan `report_categories` di-upsert.
@@ -1254,6 +1291,8 @@ interface ProtectedRouteProps { roles?: GlobalRole[]; communityRole?: MemberRole
 | `/dampak` | semua | S14 (`DashboardPage scope=publik`; detail bila login) |
 | `/tentang-ai` | publik | S15 |
 | `/notifikasi` | login | S16 |
+| (mobile) `rute/*` | login | M-S20, M-S21 (cari & detail rute moda umum, dari app SmartRoute) |
+| (mobile) `admin/*` | admin | M-S22 |
 | `/admin` | admin | S17 |
 | widget chatbot | semua | S18 |
 
